@@ -13,11 +13,22 @@
   html,body{margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:0;height:0;background:transparent;}
+  .phone-stage{min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:12px 0;}
+  .phone-frame{
+    position:relative;
+    flex:none;
+    height:min(845px,calc(100svh - 24px));
+    aspect-ratio:9/19.5;
+    background:#fff;
+    border-radius:54px;
+    box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 34px 90px rgba(0,0,0,.42);
+    overflow:hidden;
+  }
 </style>
 </helmet>
 
-<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:12px 0;">
-  <div style="position:relative;width:390px;height:700px;max-height:calc(100vh - 24px);background:#fff;border-radius:46px;box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 24px 70px rgba(0,0,0,.42);overflow:hidden;">
+<div class="phone-stage">
+  <div class="phone-frame">
 
     <!-- ===== LIST SCREEN ===== -->
     <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
