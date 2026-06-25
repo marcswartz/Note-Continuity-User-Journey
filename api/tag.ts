@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const MODELS = ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
 const MAX_TAGS = 2;
 const PROMPT =
-  'Read this note and return 1 to 2 short, lowercase topic tags as a JSON array of strings, e.g. ["grocery"]. Use at most 2 tags. The TITLE is the strongest signal — tag from what the note is about overall, not one passing detail in the body. Prefer common tags like grocery, work, ideas, personal, school, health, recipes, travel. Use "personal" for life balance, wellness, relationships, hobbies, and self-reflection. Use "work" for meetings, projects, and job tasks. Do not use "work" when the title is clearly personal. Return only the JSON array.';
+  'Read this note and return 1 to 2 short, lowercase topic tags as a JSON array of strings, e.g. ["grocery"]. Use at most 2 tags. The TITLE is the strongest signal — tag from what the note is about overall, not one passing detail in the body. Prefer common tags like grocery, work, ideas, personal, school, health, recipes, travel. Use "personal" for life balance, wellness, relationships, hobbies, pet care, vet visits, errands, and self-reflection. Use "work" for meetings, projects, and job tasks. Do not use "work" when the title is clearly personal. Return only the JSON array.';
 
 function splitNote(text: string): { title: string; body: string } {
   const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
@@ -99,7 +99,7 @@ function refineTags(tags: string[], text: string): string[] {
   const bodyLower = body.toLowerCase();
 
   const personalTitle =
-    /\b(life balance|wellness|wellbeing|family|personal|journal|self[- ]?care|mental health|relationships?|hobby|hobbies|gratitude|mindfulness|balance)\b/.test(
+    /\b(life balance|wellness|wellbeing|family|personal|journal|self[- ]?care|mental health|relationships?|hobby|hobbies|gratitude|mindfulness|balance|dog|cat|pet|pets|puppy|kitten|vet|veterinar|groomer|pick up|pickup)\b/.test(
       titleLower,
     );
   const workTitle =
@@ -134,7 +134,7 @@ function fallbackTags(text: string): string[] {
   if (/\b(school|homework|class|exam|study)\b/.test(combined)) picks.push('school');
   if (/\b(travel|flight|trip|vacation)\b/.test(combined)) picks.push('travel');
   if (/\b(idea|brainstorm|sketch)\b/.test(combined)) picks.push('ideas');
-  if (/\b(life balance|wellness|wellbeing|personal|journal|family|hobby|mindfulness)\b/.test(combined)) {
+  if (/\b(life balance|wellness|wellbeing|personal|journal|family|hobby|mindfulness|dog|cat|pet|pets|puppy|kitten|vet|vets|veterinar|groomer|pick up|pickup)\b/.test(combined)) {
     picks.push('personal');
   }
   if (/\b(meeting|meetings|sync|standup|work\b|project|client|internship|office|quarterly)\b/.test(combined)) {

@@ -16,8 +16,8 @@
 </style>
 </helmet>
 
-<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:40px 0;">
-  <div style="position:relative;width:390px;height:844px;background:#fff;border-radius:54px;box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 34px 90px rgba(0,0,0,.42);overflow:hidden;">
+<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:12px 0;">
+  <div style="position:relative;width:390px;height:700px;max-height:calc(100vh - 24px);background:#fff;border-radius:46px;box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 24px 70px rgba(0,0,0,.42);overflow:hidden;">
 
     <!-- ===== LIST SCREEN ===== -->
     <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
@@ -292,6 +292,36 @@ class Component extends DCLogic {
     return lines.join('\n');
   }
 
+  openNoteText(openId = this.state.openId) {
+    const draft = this._liveDraft[openId];
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = draft?.heading ?? note?.heading ?? '';
+    const items = draft?.items ?? note?.items ?? [];
+    return this.liveNoteText(heading, items);
+  }
+
+  localFallbackTags(text) {
+    const combined = String(text || '').toLowerCase();
+    const picks = [];
+    if (/\b(grocery|groceries|costco|shopping)\b/.test(combined)) picks.push('grocery');
+    if (/\b(workout|exercise|gym|health)\b/.test(combined)) picks.push('health');
+    if (/\b(meeting|meetings|sync|standup|work\b|project|client|intern|office)\b/.test(combined)) picks.push('work');
+    if (/\b(idea|brainstorm)\b/.test(combined)) picks.push('ideas');
+    if (/\b(life balance|wellness|personal|family|hobby|dog|cat|pet|pets|puppy|kitten|vet|vets|veterinar|groomer|pick up|pickup)\b/.test(combined)) picks.push('personal');
+    return [...new Set(picks)].slice(0, 2);
+  }
+
+  applyTags(noteId, tags) {
+    const cleaned = tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
+    if (!cleaned.length) return;
+    this._pendingTags[noteId] = cleaned;
+    const stillTyping =
+      this.state.screen === 'detail' &&
+      this.state.openId === noteId &&
+      (this._headingFocused || this._bodyFocused);
+    if (!stillTyping) this.commitPendingTags(noteId);
+  }
+
   isEditingDetail() {
     return this.state.screen === 'detail' && (this._headingFocused || this._bodyFocused);
   }
@@ -342,11 +372,7 @@ class Component extends DCLogic {
   flushTagForOpenNote() {
     const openId = this.state.openId;
     clearTimeout(this._tagTimers[openId]);
-    const draft = this._liveDraft[openId];
-    const note = this.state.notes.find((n) => n.id === openId);
-    const heading = draft?.heading ?? note?.heading ?? '';
-    const items = draft?.items ?? note?.items ?? [];
-    const text = this.liveNoteText(heading, items);
+    const text = this.openNoteText(openId);
     if (text.trim()) this.fetchTagsForNote(openId, text);
   }
 
@@ -370,9 +396,9 @@ class Component extends DCLogic {
     const note = this.state.notes.find((n) => n.id === openId);
     const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
     this._liveDraft[openId] = { heading, items };
+    this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading, items });
     delete this._liveDraft[openId];
-    this.flushTagForOpenNote();
     this.commitPendingTags(openId);
   }
 
@@ -400,9 +426,9 @@ class Component extends DCLogic {
     while (items.length <= index) items.push('');
     items[index] = e.currentTarget.textContent || '';
     this._liveDraft[openId] = { heading, items: items.slice() };
+    this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
     delete this._liveDraft[openId];
-    this.flushTagForOpenNote();
     this.commitPendingTags(openId);
   }
 
@@ -420,20 +446,22 @@ class Component extends DCLogic {
         body: JSON.stringify({ text: trimmed }),
         signal: controller.signal,
       });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (this._tagSeq[noteId] !== seq) return;
-      if (!data || !Array.isArray(data.tags)) return;
-      const tags = data.tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
+      let tags = [];
+      if (res.ok) {
+        const data = await res.json();
+        if (this._tagSeq[noteId] !== seq) return;
+        if (data && Array.isArray(data.tags)) {
+          tags = data.tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
+        }
+      }
+      if (!tags.length) tags = this.localFallbackTags(trimmed);
       if (!tags.length) return;
-      this._pendingTags[noteId] = tags;
-      const stillTyping =
-        this.state.screen === 'detail' &&
-        this.state.openId === noteId &&
-        (this._headingFocused || this._bodyFocused);
-      if (!stillTyping) this.commitPendingTags(noteId);
+      if (this._tagSeq[noteId] !== seq) return;
+      this.applyTags(noteId, tags);
     } catch (_) {
-      /* silent fallback */
+      if (this._tagSeq[noteId] !== seq) return;
+      const tags = this.localFallbackTags(trimmed);
+      if (tags.length) this.applyTags(noteId, tags);
     } finally {
       clearTimeout(timeout);
     }
@@ -468,8 +496,8 @@ class Component extends DCLogic {
     const openId = this.state.openId;
     this._headingFocused = false;
     this._bodyFocused = false;
-    this.syncDraftToState();
     this.flushTagForOpenNote();
+    this.syncDraftToState();
     this.setState({ screen: 'list', sheet: null });
     setTimeout(() => this.commitPendingTags(openId), 2500);
   }
@@ -477,8 +505,8 @@ class Component extends DCLogic {
     const openId = this.state.openId;
     this._headingFocused = false;
     this._bodyFocused = false;
-    this.syncDraftToState();
     this.flushTagForOpenNote();
+    this.syncDraftToState();
     this.commitPendingTags(openId);
     this.setState({ screen: 'active', sheet: null });
     setTimeout(() => this.commitPendingTags(openId), 2500);
