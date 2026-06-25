@@ -1,0 +1,16 @@
+{
+  "name": "apple-notes-continuity",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/prepare-public.mjs",
+    "dev": "npm run build && node --import tsx scripts/local-dev.mjs",
+    "dev:vercel": "npm run build && vercel dev --listen 3000",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.1.14",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vercel": "^44.2.7"
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+.vercel
+public/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Apple Notes feature launch/uploads/
+Apple Notes feature launch/.thumbnail

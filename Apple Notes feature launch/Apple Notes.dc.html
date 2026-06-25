@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
+  ::-webkit-scrollbar{width:0;height:0;background:transparent;}
+</style>
+</helmet>
+
+<div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:40px 0;">
+  <div style="position:relative;width:390px;height:844px;background:#fff;border-radius:54px;box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 34px 90px rgba(0,0,0,.42);overflow:hidden;">
+
+    <!-- ===== LIST SCREEN ===== -->
+    <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;background:#F2F2F7;">
+      <div style="position:absolute;inset:0;overflow-y:auto;padding-top:52px;padding-bottom:128px;">
+        <div style="display:flex;justify-content:flex-end;padding:4px 16px 0;">
+          <div style="width:34px;height:34px;border-radius:50%;background:#E7E7EC;color:#8A8A8E;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg></div>
+        </div>
+        <div style="padding:2px 20px 0;font-size:34px;font-weight:800;letter-spacing:-.6px;color:#1c1c1e;">Notes</div>
+        <div style="padding:3px 20px 0;font-size:15px;color:#8A8A8E;">{{ noteCount }} Notes</div>
+
+        <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 20px 4px;">
+          <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="6">
+            <sc-if value="{{ chip.sel }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ chip.onClick }}" style="flex:none;padding:7px 17px;border-radius:18px;background:#E0A21C;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">{{ chip.name }}</div>
+            </sc-if>
+            <sc-if value="{{ chip.unsel }}" hint-placeholder-val="{{ true }}">
+              <div onClick="{{ chip.onClick }}" style="flex:none;padding:7px 17px;border-radius:18px;background:#E7E7EC;color:#3a3a3c;font-size:15px;font-weight:500;cursor:pointer;">{{ chip.name }}</div>
+            </sc-if>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ showBanner }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ goActive }}" style="margin:14px 20px 8px;background:#fff;border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer;">
+            <span style="color:#E0A21C;display:flex;"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+            <span style="font-size:17px;font-weight:600;color:#1c1c1e;flex:1;">Active Notes</span>
+            <span style="min-width:23px;height:23px;padding:0 6px;border-radius:12px;background:#F7EBCB;color:#B5881C;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ activeCount }}</span>
+            <span style="color:#C7C7CC;display:flex;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="m1.5 1.5 6 6.5-6 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </div>
+        </sc-if>
+
+        <div style="height:6px;"></div>
+
+        <sc-for list="{{ groups }}" as="group" hint-placeholder-count="2">
+          <div style="font-size:22px;font-weight:700;color:#1c1c1e;padding:8px 20px 8px;letter-spacing:-.3px;">{{ group.name }}</div>
+          <div style="margin:0 20px 18px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.045);">
+            <sc-for list="{{ group.items }}" as="note" hint-placeholder-count="3">
+              <div onClick="{{ note.onOpen }}" style="padding:0 16px;cursor:pointer;">
+                <sc-if value="{{ note.notFirst }}" hint-placeholder-val="{{ true }}"><div style="height:1px;background:#ECECF0;"></div></sc-if>
+                <div style="padding:12px 0;">
+                <div style="font-size:17px;font-weight:600;color:#1c1c1e;letter-spacing:-.2px;">{{ note.title }}</div>
+                <div style="margin-top:4px;font-size:15px;color:#8A8A8E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><span style="color:#6E6E73;">{{ note.when }}</span>&nbsp;&nbsp;{{ note.preview }}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap;">
+                  <sc-for list="{{ note.badges }}" as="b" hint-placeholder-count="1">
+                    <sc-if value="{{ b.plain }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:11px;background:#F7EBCB;color:#B5881C;font-size:13px;font-weight:500;">{{ b.label }}</span>
+                    </sc-if>
+                    <sc-if value="{{ b.icon }}" hint-placeholder-val="{{ true }}">
+                      <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:11px;background:#F7EBCB;color:#C68A12;font-size:13px;font-weight:500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ b.label }}</span>
+                    </sc-if>
+                  </sc-for>
+                </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:90px 40px;text-align:center;">
+            <div style="font-size:17px;font-weight:600;color:#8A8A8E;">No notes in “{{ filterName }}”</div>
+            <div style="font-size:15px;margin-top:6px;color:#A2A2A7;">Notes you tag {{ filterHash }} will show up here.</div>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- bottom search bar -->
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:22px 14px 30px;background:linear-gradient(to top,#F2F2F7 58%,rgba(242,242,247,.92) 78%,rgba(242,242,247,0));backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;gap:11px;">
+        <div style="flex:1;display:flex;align-items:center;gap:8px;background:rgba(118,118,128,.14);border-radius:20px;padding:11px 14px;">
+          <span style="color:#8A8A8E;display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span style="color:#8A8A8E;font-size:17px;flex:1;">Search</span>
+          <span style="color:#8A8A8E;display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        </div>
+        <div onClick="{{ composeNote }}" style="width:44px;height:44px;border-radius:50%;background:rgba(118,118,128,.14);display:flex;align-items:center;justify-content:center;color:#E0A21C;cursor:pointer;flex:none;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M11 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18.4 2.6a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.4-9.4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== ACTIVE NOTES SCREEN ===== -->
+    <sc-if value="{{ showActive }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:52px;padding-bottom:40px;">
+      <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;padding:8px 16px 0;font-size:17px;font-weight:500;cursor:pointer;width:fit-content;">
+        <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:16px 20px 0;">
+        <span style="color:#E0A21C;display:flex;"><svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:#1c1c1e;">Active Notes</span>
+      </div>
+      <div style="font-size:16px;color:#8A8A8E;padding:7px 20px 0;">Notes with upcoming reminders</div>
+      <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:14px;">
+        <sc-for list="{{ activeList }}" as="n" hint-placeholder-count="1">
+          <div onClick="{{ n.onOpen }}" style="border:1px solid #E8E8EC;border-radius:16px;padding:17px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);">
+            <div style="font-size:18px;font-weight:700;color:#1c1c1e;letter-spacing:-.2px;">{{ n.title }}</div>
+            <div style="font-size:15px;color:#8A8A8E;margin-top:6px;">{{ n.preview }}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:11px;color:#E0A21C;font-size:15px;font-weight:600;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ n.remText }}
+            </div>
+            <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;">
+              <sc-for list="{{ n.tagList }}" as="t" hint-placeholder-count="1">
+                <span style="padding:3px 11px;border-radius:11px;background:#EFEFF2;color:#7C7C82;font-size:13px;font-weight:500;">{{ t.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== DETAIL SCREEN ===== -->
+    <sc-if value="{{ showDetail }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:50px;padding-bottom:48px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px;">
+        <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;font-size:17px;font-weight:500;cursor:pointer;padding:4px 8px;">
+          <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;">
+          <div onClick="{{ openReminderSheet }}" style="{{ bellBtnStyle }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+          <div onClick="{{ openTagSheet }}" style="{{ hashBtnStyle }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 3 7 21M17 3l-2 18M4 8.5h16M3 15.5h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></div>
+          <div style="width:37px;height:37px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#AEAEB2;cursor:pointer;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:13px;color:#A2A2A7;margin-top:6px;">{{ detailDate }}</div>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:16px 20px 0;">
+        <sc-for list="{{ detailTags }}" as="t" hint-placeholder-count="1">
+          <span style="padding:5px 13px;border-radius:13px;background:#F7EBCB;color:#B5881C;font-size:15px;font-weight:500;">#{{ t.name }}</span>
+        </sc-for>
+        <div onClick="{{ openTagSheet }}" style="width:30px;height:30px;border-radius:50%;background:#EFEFF2;color:#8A8A8E;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+      </div>
+
+      <sc-if value="{{ hasReminder }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ openReminderSheet }}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:14px 20px 0;cursor:pointer;">
+          <span style="color:#E0A21C;display:flex;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span>
+          <span style="font-size:15px;color:#1c1c1e;font-weight:500;">Reminder: {{ reminderText }}</span>
+          <sc-if value="{{ hasRepeat }}" hint-placeholder-val="{{ true }}"><span style="padding:2px 10px;border-radius:10px;background:#F7EBCB;color:#B5881C;font-size:13px;font-weight:500;">{{ reminderRepeat }}</span></sc-if>
+        </div>
+      </sc-if>
+
+      <div contenteditable="true" onFocus="{{ onHeadingFocus }}" onInput="{{ onHeadingInput }}" onBlur="{{ onHeadingBlur }}" style="font-size:30px;font-weight:800;color:#1c1c1e;padding:18px 20px 0;letter-spacing:-.6px;outline:none;">{{ detailHeading }}</div>
+      <div style="padding:14px 20px 0;">
+        <sc-for list="{{ bodyItems }}" as="it" hint-placeholder-count="6">
+          <div style="display:flex;gap:11px;font-size:18px;color:#2a2a2c;padding:5px 0;line-height:1.34;"><span style="color:#9a9a9e;">•</span><span contenteditable="true" onFocus="{{ it.onFocus }}" onInput="{{ it.onInput }}" onBlur="{{ it.onBlur }}" style="flex:1;outline:none;">{{ it.text }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ===== BACKDROP + SHEETS ===== -->
+    <div onClick="{{ closeSheet }}" style="{{ backdropStyle }}"></div>
+
+    <div style="{{ reminderSlideStyle }}">
+      <div style="background:#fff;border-radius:22px 22px 0 0;padding:8px 0 30px;box-shadow:0 -8px 34px rgba(0,0,0,.14);max-height:78vh;overflow-y:auto;">
+        <div style="width:40px;height:5px;border-radius:3px;background:#D8D8DD;margin:8px auto 14px;"></div>
+
+        <sc-if value="{{ showReminderPresets }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:22px;font-weight:700;color:#1c1c1e;padding:0 22px 8px;letter-spacing:-.3px;">Add Reminder</div>
+        <sc-for list="{{ remOpts }}" as="o" hint-placeholder-count="5">
+          <div onClick="{{ o.onClick }}" style="display:flex;align-items:center;gap:15px;padding:14px 22px;cursor:pointer;">
+            <sc-if value="{{ o.isClock }}" hint-placeholder-val="{{ true }}"><span style="color:#E0A21C;display:flex;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></sc-if>
+            <sc-if value="{{ o.isCal }}" hint-placeholder-val="{{ false }}"><span style="color:#E0A21C;display:flex;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3 9.5h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span></sc-if>
+            <span style="font-size:18px;color:#1c1c1e;flex:1;">{{ o.label }}</span>
+            <sc-if value="{{ o.sel }}" hint-placeholder-val="{{ false }}"><span style="color:#E0A21C;display:flex;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 12.5 10 17.5 19.5 6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span></sc-if>
+          </div>
+        </sc-for>
+        <div style="display:flex;align-items:center;gap:15px;padding:14px 22px;opacity:.45;">
+          <span style="color:#8A8A8E;display:flex;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg></span>
+          <span style="font-size:18px;color:#8A8A8E;">Location (coming soon)</span>
+        </div>
+        <div style="height:1px;background:#ECECF0;margin:8px 22px;"></div>
+        <div onClick="{{ removeReminder }}" style="text-align:center;color:#FF3B30;font-size:18px;font-weight:500;padding:16px 0 0;cursor:pointer;">Remove Reminder</div>
+        </sc-if>
+
+        <sc-if value="{{ showReminderPicker }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ backToReminderPresets }}" style="display:flex;align-items:center;gap:6px;color:#E0A21C;padding:0 22px 8px;font-size:17px;font-weight:500;cursor:pointer;width:fit-content;">
+          <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Add Reminder
+        </div>
+        <div style="font-size:22px;font-weight:700;color:#1c1c1e;padding:0 22px 4px;letter-spacing:-.3px;">Pick Date &amp; Time</div>
+        <div style="font-size:15px;color:#8A8A8E;padding:0 22px 16px;">Choose when you want to be reminded.</div>
+
+        <div style="margin:0 22px 18px;background:#F2F2F7;border-radius:16px;padding:18px 16px;text-align:center;">
+          <div style="font-size:13px;font-weight:600;color:#8A8A8E;letter-spacing:.3px;text-transform:uppercase;margin-bottom:8px;">Reminder</div>
+          <div style="font-size:24px;font-weight:700;color:#1c1c1e;letter-spacing:-.4px;line-height:1.25;">{{ pickerPreview }}</div>
+        </div>
+
+        <div style="padding:0 22px 20px;">
+          <input type="datetime-local" value="{{ pickerDateTime }}" onChange="{{ onPickerDateTimeChange }}" style="width:100%;box-sizing:border-box;border:none;border-radius:14px;background:#F2F2F7;padding:14px 16px;font-size:17px;color:#1c1c1e;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;" />
+        </div>
+
+        <div style="padding:0 22px;">
+          <div onClick="{{ confirmCustomReminder }}" style="background:#E0A21C;color:#fff;font-size:17px;font-weight:600;text-align:center;padding:15px 0;border-radius:14px;cursor:pointer;">Set Reminder</div>
+        </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <div style="{{ tagSlideStyle }}">
+      <div style="background:#fff;border-radius:22px 22px 0 0;padding:8px 22px 36px;box-shadow:0 -8px 34px rgba(0,0,0,.14);">
+        <div style="width:40px;height:5px;border-radius:3px;background:#D8D8DD;margin:8px auto 14px;"></div>
+        <div style="font-size:22px;font-weight:700;color:#1c1c1e;padding:0 0 16px;letter-spacing:-.3px;">Tags</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          <sc-for list="{{ curTags }}" as="t" hint-placeholder-count="1">
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:15px;background:#F7EBCB;color:#B5881C;font-size:15px;font-weight:500;">#{{ t.name }}<span onClick="{{ t.onRemove }}" style="display:flex;cursor:pointer;color:#C9971F;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 5l14 14M19 5 5 19" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span></span>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;">
+          <div style="flex:1;background:#F0F0F3;border-radius:12px;padding:13px 14px;color:#A2A2A7;font-size:16px;">Add tag…</div>
+          <div style="background:#E0A21C;color:#fff;font-weight:600;font-size:16px;padding:13px 22px;border-radius:12px;cursor:pointer;">Add</div>
+        </div>
+        <div style="font-size:14px;color:#8A8A8E;margin-bottom:11px;font-weight:500;">Suggestions</div>
+        <div style="display:flex;flex-wrap:wrap;gap:9px;">
+          <sc-for list="{{ suggestions }}" as="sg" hint-placeholder-count="6">
+            <span onClick="{{ sg.onClick }}" style="padding:8px 15px;border-radius:16px;background:#F1F1F4;color:#3a3a3c;font-size:15px;font-weight:500;cursor:pointer;">+ {{ sg.name }}</span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== STATUS BAR + ISLAND + HOME ===== -->
+    <div style="position:absolute;top:0;left:0;right:0;height:50px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 7px;z-index:100;pointer-events:none;">
+      <div style="font-size:16px;font-weight:600;color:#000;letter-spacing:.2px;">9:17</div>
+      <div style="display:flex;align-items:center;gap:7px;color:#000;">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="2.5" width="3" height="9.5" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor"><path d="M8.5 11.4 11 8.5a4 4 0 0 0-5 0l2.5 2.9ZM8.5 6.4c1.5 0 3 .5 4.2 1.5l1.6-1.9A9 9 0 0 0 8.5 4 9 9 0 0 0 2.7 6l1.6 1.9A6.5 6.5 0 0 1 8.5 6.4ZM8.5 1A12 12 0 0 0 .8 3.6L2.4 5.5A9.5 9.5 0 0 1 8.5 3.4 9.5 9.5 0 0 1 14.6 5.5l1.6-1.9A12 12 0 0 0 8.5 1Z"/></svg>
+        <svg width="26" height="13" viewBox="0 0 26 13" fill="none"><rect x="1" y="1" width="21" height="11" rx="3" stroke="#000" stroke-opacity=".35" stroke-width="1"/><rect x="3" y="3" width="16" height="7" rx="1.5" fill="#000"/><path d="M23.5 4.5v4a2 2 0 0 0 0-4Z" fill="#000" fill-opacity=".4"/></svg>
+      </div>
+    </div>
+    <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px;z-index:101;"></div>
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:138px;height:5px;border-radius:3px;background:#1c1c1e;opacity:.9;z-index:102;pointer-events:none;"></div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  _tagTimers = {};
+  _tagSeq = {};
+  _liveDraft = {};
+  _pendingTags = {};
+  _headingFocused = false;
+  _bodyFocused = false;
+
+  state = {
+    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '',
+    reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
+    tags: { grocery: ['grocery'], design: ['work'], workout: ['health'], costco: ['grocery'] },
+    notes: [
+      { id: 'grocery', section: 'Today', title: 'Grocery List', when: '30m ago', preview: 'Olive oil', desc: 'Weekly grocery essentials', date: 'June 17, 2026 at 9:17 PM', overdue: true, heading: 'Grocery List', items: ['Olive oil', 'Sourdough bread', 'Avocados (3)', 'Cherry tomatoes', 'Fresh mozzarella', 'Basil', 'Lemons', 'Almond milk'] },
+      { id: 'design', section: 'Today', title: 'Design Sync — Meeting Notes', when: '8:47 PM', preview: 'Attendees: Sarah, Mike, Jordan', desc: 'Design sync action items and decisions', date: 'June 17, 2026 at 8:47 PM', reminderBadge: 'Today 10:00 AM', heading: 'Design Sync — Meeting Notes', items: ['Attendees: Sarah, Mike, Jordan', 'Reviewed the Q3 roadmap', 'Decision: ship tag filters first', 'Mike to spec the reminder sheet', 'Sarah to audit empty states', 'Next sync — Friday 10:00 AM'] },
+      { id: 'workout', section: 'Today', title: 'Workout Plan — Week 12', when: '4:47 PM', preview: 'Monday: Upper body', desc: 'Current workout schedule', date: 'June 17, 2026 at 4:47 PM', heading: 'Workout Plan — Week 12', items: ['Monday — Upper body', 'Tuesday — Zone 2 cardio (40 min)', 'Wednesday — Lower body', 'Thursday — Rest / mobility', 'Friday — Full body', 'Saturday — Long run (8 mi)'] },
+      { id: 'costco', section: 'Yesterday', title: 'Weekly Groceries — Costco', when: 'Yesterday', preview: 'Paper towels (bulk)', desc: 'Costco bulk shopping list', date: 'June 16, 2026 at 7:12 PM', heading: 'Weekly Groceries — Costco', items: ['Paper towels (bulk)', 'Rotisserie chicken', 'Eggs (24 ct)', 'Olive oil (2 L)', 'Frozen berries', 'Coffee beans', 'Dish soap'] },
+    ],
+  };
+
+  componentWillUnmount() {
+    Object.values(this._tagTimers).forEach((t) => clearTimeout(t));
+  }
+
+  noteText(note) {
+    if (!note) return '';
+    const lines = [note.heading || note.title || '', ...(note.items || [])].map((l) => String(l || '').trim()).filter(Boolean);
+    return lines.join('\n');
+  }
+
+  previewFrom(note) {
+    const line = (note.items || []).map((l) => String(l || '').trim()).find(Boolean);
+    return line || String(note.heading || note.title || '').trim() || 'No additional text';
+  }
+
+  liveNoteText(heading, items) {
+    const lines = [heading || '', ...(items || [])].map((l) => String(l || '').trim()).filter(Boolean);
+    return lines.join('\n');
+  }
+
+  isEditingDetail() {
+    return this.state.screen === 'detail' && (this._headingFocused || this._bodyFocused);
+  }
+
+  tagsFor(noteId) {
+    return this._pendingTags[noteId] || this.state.tags[noteId] || [];
+  }
+
+  commitPendingTags(noteId) {
+    if (!this._pendingTags[noteId]) return;
+    const tg = { ...this.state.tags };
+    tg[noteId] = this._pendingTags[noteId];
+    delete this._pendingTags[noteId];
+    this.setState({ tags: tg });
+  }
+
+  syncDraftToState() {
+    const openId = this.state.openId;
+    const draft = this._liveDraft[openId];
+    if (!draft) return;
+    const patch = {};
+    if (draft.heading != null) {
+      patch.heading = String(draft.heading).trim() || 'New Note';
+      patch.title = patch.heading;
+    }
+    if (draft.items) patch.items = draft.items;
+    if (Object.keys(patch).length) this.applyNotePatch(openId, patch);
+    delete this._liveDraft[openId];
+  }
+
+  applyNotePatch(openId, patch) {
+    const notes = this.state.notes.map((n) => (n.id === openId ? { ...n, ...patch } : n));
+    const note = notes.find((n) => n.id === openId);
+    if (note) {
+      note.preview = this.previewFrom(note);
+      if (note.heading) note.title = note.heading;
+    }
+    this.setState({ notes });
+    return note;
+  }
+
+  scheduleTag(noteId, text) {
+    if (!text || !String(text).trim()) return;
+    clearTimeout(this._tagTimers[noteId]);
+    this._tagTimers[noteId] = setTimeout(() => this.fetchTagsForNote(noteId, text), 800);
+  }
+
+  flushTagForOpenNote() {
+    const openId = this.state.openId;
+    clearTimeout(this._tagTimers[openId]);
+    const draft = this._liveDraft[openId];
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = draft?.heading ?? note?.heading ?? '';
+    const items = draft?.items ?? note?.items ?? [];
+    const text = this.liveNoteText(heading, items);
+    if (text.trim()) this.fetchTagsForNote(openId, text);
+  }
+
+  onHeadingFocus() {
+    this._headingFocused = true;
+  }
+
+  onHeadingInput(e) {
+    const openId = this.state.openId;
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = e.currentTarget.textContent || '';
+    const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
+    this._liveDraft[openId] = { heading, items };
+    this.scheduleTag(openId, this.liveNoteText(heading, items));
+  }
+
+  onHeadingBlur(e) {
+    this._headingFocused = false;
+    const heading = (e.currentTarget.textContent || '').trim() || 'New Note';
+    const openId = this.state.openId;
+    const note = this.state.notes.find((n) => n.id === openId);
+    const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
+    this._liveDraft[openId] = { heading, items };
+    this.applyNotePatch(openId, { heading, title: heading, items });
+    delete this._liveDraft[openId];
+    this.flushTagForOpenNote();
+    this.commitPendingTags(openId);
+  }
+
+  onItemFocus() {
+    this._bodyFocused = true;
+  }
+
+  onItemInput(index, e) {
+    const openId = this.state.openId;
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
+    const items = (this._liveDraft[openId]?.items || (note?.items || []).slice());
+    while (items.length <= index) items.push('');
+    items[index] = e.currentTarget.textContent || '';
+    this._liveDraft[openId] = { heading, items: items.slice() };
+    this.scheduleTag(openId, this.liveNoteText(heading, items));
+  }
+
+  onItemBlur(index, e) {
+    this._bodyFocused = false;
+    const openId = this.state.openId;
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
+    const items = (this._liveDraft[openId]?.items || (note?.items || []).slice());
+    while (items.length <= index) items.push('');
+    items[index] = e.currentTarget.textContent || '';
+    this._liveDraft[openId] = { heading, items: items.slice() };
+    this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
+    delete this._liveDraft[openId];
+    this.flushTagForOpenNote();
+    this.commitPendingTags(openId);
+  }
+
+  async fetchTagsForNote(noteId, text) {
+    const trimmed = String(text || '').trim();
+    if (!trimmed) return;
+    const seq = (this._tagSeq[noteId] || 0) + 1;
+    this._tagSeq[noteId] = seq;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch('/api/tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: trimmed }),
+        signal: controller.signal,
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (this._tagSeq[noteId] !== seq) return;
+      if (!data || !Array.isArray(data.tags)) return;
+      const tags = data.tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
+      if (!tags.length) return;
+      this._pendingTags[noteId] = tags;
+      const stillTyping =
+        this.state.screen === 'detail' &&
+        this.state.openId === noteId &&
+        (this._headingFocused || this._bodyFocused);
+      if (!stillTyping) this.commitPendingTags(noteId);
+    } catch (_) {
+      /* silent fallback */
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  updateNote(openId, patch) {
+    const note = this.applyNotePatch(openId, patch);
+    if (note) this.scheduleTag(openId, this.noteText(note));
+    return note;
+  }
+
+  composeNote() {
+    const id = 'note-' + Date.now();
+    const now = new Date();
+    const note = {
+      id,
+      section: 'Today',
+      title: 'New Note',
+      when: 'Just now',
+      preview: 'No additional text',
+      date: now.toLocaleString(undefined, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      heading: 'New Note',
+      items: [''],
+    };
+    const notes = [note, ...this.state.notes];
+    const tags = { ...this.state.tags, [id]: [] };
+    this.setState({ notes, tags, screen: 'detail', openId: id, sheet: null });
+  }
+
+  open(id) { this.setState({ screen: 'detail', openId: id, sheet: null }); }
+  goList() {
+    const openId = this.state.openId;
+    this._headingFocused = false;
+    this._bodyFocused = false;
+    this.syncDraftToState();
+    this.flushTagForOpenNote();
+    this.setState({ screen: 'list', sheet: null });
+    setTimeout(() => this.commitPendingTags(openId), 2500);
+  }
+  goActive() {
+    const openId = this.state.openId;
+    this._headingFocused = false;
+    this._bodyFocused = false;
+    this.syncDraftToState();
+    this.flushTagForOpenNote();
+    this.commitPendingTags(openId);
+    this.setState({ screen: 'active', sheet: null });
+    setTimeout(() => this.commitPendingTags(openId), 2500);
+  }
+  setFilter(n) { this.setState({ filter: n }); }
+  openSheet(n) { this.setState({ sheet: n, reminderPickerOpen: false }); }
+  closeSheet() { this.setState({ sheet: null, reminderPickerOpen: false }); }
+
+  toPickerValue(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  formatReminderText(date) {
+    const d = date instanceof Date ? date : new Date(date);
+    return d.toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  defaultPickerDate() {
+    const existing = this.state.reminders[this.state.openId];
+    if (existing?.at) return new Date(existing.at);
+    const d = new Date();
+    d.setSeconds(0, 0);
+    d.setMinutes(0);
+    d.setHours(d.getHours() + 1);
+    return d;
+  }
+
+  openReminderPicker() {
+    const d = this.defaultPickerDate();
+    this.setState({ reminderPickerOpen: true, pickerDateTime: this.toPickerValue(d) });
+  }
+
+  backToReminderPresets() { this.setState({ reminderPickerOpen: false }); }
+
+  onPickerDateTimeChange(e) {
+    this.setState({ pickerDateTime: e.target.value || '' });
+  }
+
+  confirmCustomReminder() {
+    const value = this.state.pickerDateTime;
+    if (!value) return;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return;
+    const text = this.formatReminderText(d);
+    const r = { ...this.state.reminders };
+    r[this.state.openId] = { text, repeat: '', custom: true, at: d.toISOString() };
+    this.setState({ reminders: r, pickedReminder: '', sheet: null, reminderPickerOpen: false });
+  }
+
+  pick(label) {
+    if (label === 'Pick Date & Time') {
+      this.openReminderPicker();
+      return;
+    }
+    const r = { ...this.state.reminders };
+    r[this.state.openId] = { text: label, repeat: '', custom: false };
+    this.setState({ reminders: r, pickedReminder: label, sheet: null, reminderPickerOpen: false });
+  }
+
+  removeReminder() {
+    const r = { ...this.state.reminders };
+    delete r[this.state.openId];
+    this.setState({ reminders: r, pickedReminder: '', sheet: null, reminderPickerOpen: false });
+  }
+  addTag(t) { const tg = { ...this.state.tags }; const a = (tg[this.state.openId] || []).slice(); if (!a.includes(t)) a.push(t); tg[this.state.openId] = a; this.setState({ tags: tg }); }
+  removeTag(t) { const tg = { ...this.state.tags }; tg[this.state.openId] = (tg[this.state.openId] || []).filter(x => x !== t); this.setState({ tags: tg }); }
+
+  renderVals() {
+    const G = '#E0A21C', B = '#0A84FF';
+    const s = this.state;
+    const notes = s.notes || [];
+    const showList = s.screen === 'list', showActive = s.screen === 'active', showDetail = s.screen === 'detail';
+
+    const chipNames = ['All', 'grocery', 'work', 'ideas', 'personal', 'school', 'recipes'];
+    const chips = chipNames.map(n => ({ name: n, sel: n === s.filter, unsel: n !== s.filter, onClick: () => this.setFilter(n) }));
+
+    const visible = notes.filter(n => s.filter === 'All' ? true : (this.tagsFor(n.id)).includes(s.filter));
+    const order = ['Today', 'Yesterday'];
+    const groups = order.map(name => {
+      const items = visible.filter(n => n.section === name).map((n, i) => {
+        const tags = this.tagsFor(n.id);
+        const badges = tags.map(t => ({ label: t, plain: true, icon: false }));
+        if (n.overdue) badges.push({ label: 'Overdue', plain: false, icon: true });
+        else if (n.reminderBadge) badges.push({ label: n.reminderBadge, plain: false, icon: true });
+        return { ...n, notFirst: i > 0, badges, onOpen: () => this.open(n.id) };
+      });
+      return { name, items, has: items.length > 0 };
+    }).filter(g => g.has);
+    const isEmpty = showList && groups.length === 0;
+
+    const activeList = notes.filter(n => s.reminders[n.id] && !n.overdue).map(n => ({
+      ...n, remText: (s.reminders[n.id] || {}).text, tagList: this.tagsFor(n.id).map(t => ({ name: t })), onOpen: () => this.open(n.id)
+    }));
+    const activeCount = activeList.length;
+    const showBanner = showList && s.filter === 'All' && activeCount > 0;
+
+    const note = notes.find(n => n.id === s.openId) || notes[0];
+    const detailTags = this.tagsFor(s.openId).map(t => ({ name: t }));
+    const rem = s.reminders[s.openId];
+    const hasReminder = !!rem;
+    const reminderText = rem ? rem.text : '';
+    const reminderRepeat = rem && rem.repeat ? rem.repeat : '';
+    const hasRepeat = !!reminderRepeat;
+
+    const ringBase = { width: '37px', height: '37px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: G };
+    const bellBtnStyle = { ...ringBase, boxShadow: s.sheet === 'reminder' ? 'inset 0 0 0 2px ' + B : 'none' };
+    const hashBtnStyle = { ...ringBase, boxShadow: s.sheet === 'tag' ? 'inset 0 0 0 2px ' + B : 'none' };
+
+    const remOptsRaw = [['Today 6:00 PM', 'clock'], ['Tomorrow 9:00 AM', 'clock'], ['Tomorrow 6:00 PM', 'clock'], ['This Weekend', 'clock'], ['Pick Date & Time', 'cal']];
+    const remOpts = remOptsRaw.map(([label, kind]) => ({
+      label,
+      isClock: kind === 'clock',
+      isCal: kind === 'cal',
+      sel: label === 'Pick Date & Time' ? !!rem?.custom : (!rem?.custom && s.pickedReminder === label),
+      onClick: () => this.pick(label),
+    }));
+
+    const pickerDate = s.pickerDateTime ? new Date(s.pickerDateTime) : this.defaultPickerDate();
+    const pickerPreview = Number.isNaN(pickerDate.getTime()) ? 'Select date and time' : this.formatReminderText(pickerDate);
+    const showReminderPresets = s.sheet === 'reminder' && !s.reminderPickerOpen;
+    const showReminderPicker = s.sheet === 'reminder' && s.reminderPickerOpen;
+
+    const allSugg = ['work', 'ideas', 'personal', 'school', 'recipes', 'health'];
+    const suggestions = allSugg.filter(t => !(s.tags[s.openId] || []).includes(t)).map(t => ({ name: t, onClick: () => this.addTag(t) }));
+    const curTags = (s.tags[s.openId] || []).map(t => ({ name: t, onRemove: () => this.removeTag(t) }));
+
+    const anySheet = !!s.sheet;
+    const backdropStyle = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,.34)', zIndex: 80, transition: 'opacity .3s ease', opacity: anySheet ? 1 : 0, pointerEvents: anySheet ? 'auto' : 'none' };
+    const slideBase = { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 90, transition: 'transform .42s cubic-bezier(.32,.72,0,1)' };
+    const reminderSlideStyle = { ...slideBase, transform: s.sheet === 'reminder' ? 'translateY(0)' : 'translateY(110%)' };
+    const tagSlideStyle = { ...slideBase, transform: s.sheet === 'tag' ? 'translateY(0)' : 'translateY(110%)' };
+
+    return {
+      showList, showActive, showDetail,
+      chips, groups, isEmpty, noteCount: visible.length, filterName: s.filter, filterHash: '#' + s.filter,
+      showBanner, activeCount, goActive: () => this.goActive(), activeList,
+      goList: () => this.goList(),
+      composeNote: () => this.composeNote(),
+      bellBtnStyle, hashBtnStyle, openReminderSheet: () => this.openSheet('reminder'), openTagSheet: () => this.openSheet('tag'),
+      detailHeading: note ? note.heading : '', detailDate: note ? note.date : '', detailTags,
+      bodyItems: (note ? note.items : []).map((text, index) => ({
+        text,
+        onFocus: () => this.onItemFocus(),
+        onInput: (e) => this.onItemInput(index, e),
+        onBlur: (e) => this.onItemBlur(index, e),
+      })),
+      onHeadingFocus: () => this.onHeadingFocus(),
+      onHeadingInput: (e) => this.onHeadingInput(e),
+      onHeadingBlur: (e) => this.onHeadingBlur(e),
+      hasReminder, reminderText, hasRepeat, reminderRepeat,
+      backdropStyle, closeSheet: () => this.closeSheet(),
+      reminderSlideStyle, tagSlideStyle, remOpts, removeReminder: () => this.removeReminder(),
+      showReminderPresets, showReminderPicker, pickerPreview, pickerDateTime: s.pickerDateTime,
+      backToReminderPresets: () => this.backToReminderPresets(),
+      onPickerDateTimeChange: (e) => this.onPickerDateTimeChange(e),
+      confirmCustomReminder: () => this.confirmCustomReminder(),
+      curTags, suggestions,
+    };
+  }
+}
+</script>
+</body>
+</html>
