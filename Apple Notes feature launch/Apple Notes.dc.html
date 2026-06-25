@@ -300,17 +300,6 @@ class Component extends DCLogic {
     return this.liveNoteText(heading, items);
   }
 
-  localFallbackTags(text) {
-    const combined = String(text || '').toLowerCase();
-    const picks = [];
-    if (/\b(grocery|groceries|costco|shopping)\b/.test(combined)) picks.push('grocery');
-    if (/\b(workout|exercise|gym|health)\b/.test(combined)) picks.push('health');
-    if (/\b(meeting|meetings|sync|standup|work\b|project|client|intern|office)\b/.test(combined)) picks.push('work');
-    if (/\b(idea|brainstorm)\b/.test(combined)) picks.push('ideas');
-    if (/\b(life balance|wellness|personal|family|hobby|dog|cat|pet|pets|puppy|kitten|vet|vets|veterinar|groomer|pick up|pickup)\b/.test(combined)) picks.push('personal');
-    return [...new Set(picks)].slice(0, 2);
-  }
-
   applyTags(noteId, tags) {
     const cleaned = tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
     if (!cleaned.length) return;
@@ -432,36 +421,38 @@ class Component extends DCLogic {
     this.commitPendingTags(openId);
   }
 
+  async requestTags(text, signal) {
+    const res = await fetch('/api/tag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!data || !Array.isArray(data.tags)) return [];
+    return data.tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
+  }
+
   async fetchTagsForNote(noteId, text) {
     const trimmed = String(text || '').trim();
     if (!trimmed) return;
     const seq = (this._tagSeq[noteId] || 0) + 1;
     this._tagSeq[noteId] = seq;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const res = await fetch('/api/tag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: trimmed }),
-        signal: controller.signal,
-      });
-      let tags = [];
-      if (res.ok) {
-        const data = await res.json();
+      let tags = await this.requestTags(trimmed, controller.signal);
+      if (!tags.length && this._tagSeq[noteId] === seq) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         if (this._tagSeq[noteId] !== seq) return;
-        if (data && Array.isArray(data.tags)) {
-          tags = data.tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
-        }
+        tags = await this.requestTags(trimmed, controller.signal);
       }
-      if (!tags.length) tags = this.localFallbackTags(trimmed);
       if (!tags.length) return;
       if (this._tagSeq[noteId] !== seq) return;
       this.applyTags(noteId, tags);
     } catch (_) {
-      if (this._tagSeq[noteId] !== seq) return;
-      const tags = this.localFallbackTags(trimmed);
-      if (tags.length) this.applyTags(noteId, tags);
+      /* silent */
     } finally {
       clearTimeout(timeout);
     }

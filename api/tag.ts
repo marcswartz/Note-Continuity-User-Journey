@@ -2,8 +2,32 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const MODELS = ['gemini-2.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash'];
 const MAX_TAGS = 2;
-const PROMPT =
-  'Read this note and return 1 to 2 short, lowercase topic tags as a JSON array of strings, e.g. ["grocery"]. Use at most 2 tags. The TITLE is the strongest signal — tag from what the note is about overall, not one passing detail in the body. Prefer common tags like grocery, work, ideas, personal, school, health, recipes, travel. Use "personal" for life balance, wellness, relationships, hobbies, pet care, vet visits, errands, and self-reflection. Use "work" for meetings, projects, and job tasks. Do not use "work" when the title is clearly personal. Return only the JSON array.';
+const PROMPT = `You tag Apple Notes for any topic someone might write.
+Return 1 to 2 short lowercase topic tags as a JSON array of strings only, e.g. ["grocery"].
+The TITLE is the strongest signal — infer what the note is about overall, not one passing name or detail.
+Prefer these when they clearly fit: grocery, work, ideas, personal, school, health, recipes, travel.
+If none fit well, still return the best short category tags for the note (e.g. pets, sports, home, finance).
+Use "personal" for family, gifts, pets, errands, hobbies, and life admin.
+Use "work" for meetings, projects, and job tasks — not for personal errands.
+Never return an empty array.`;
+
+const PER_VISITOR_PER_MINUTE = 30;
+const MAX_TEXT_LENGTH = 8000;
+const CACHE_TTL_MS = 60 * 60 * 1000;
+
+type Bucket = { minuteStart: number; minuteCount: number };
+type CacheEntry = { tags: string[]; expires: number };
+type TagStore = {
+  visitors: Map<string, Bucket>;
+  cache: Map<string, CacheEntry>;
+};
+
+const store: TagStore =
+  (globalThis as typeof globalThis & { __tagStore?: TagStore }).__tagStore ??
+  ((globalThis as typeof globalThis & { __tagStore?: TagStore }).__tagStore = {
+    visitors: new Map(),
+    cache: new Map(),
+  });
 
 function splitNote(text: string): { title: string; body: string } {
   const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
@@ -15,27 +39,22 @@ function formatNoteForModel(text: string): string {
   return `Title: ${title || '(untitled)'}\nBody: ${body || '(empty)'}`;
 }
 
-const PER_VISITOR_PER_MINUTE = 5;
-const DAILY_TOTAL_LIMIT = 120;
-const MAX_TEXT_LENGTH = 8000;
+function cacheKey(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
-type Bucket = { minuteStart: number; minuteCount: number };
-type RateStore = {
-  visitors: Map<string, Bucket>;
-  dayKey: string;
-  dayCount: number;
-};
+function getCachedTags(text: string): string[] | null {
+  const entry = store.cache.get(cacheKey(text));
+  if (!entry || entry.expires < Date.now()) {
+    if (entry) store.cache.delete(cacheKey(text));
+    return null;
+  }
+  return entry.tags;
+}
 
-const store: RateStore =
-  (globalThis as typeof globalThis & { __tagRateStore?: RateStore }).__tagRateStore ??
-  ((globalThis as typeof globalThis & { __tagRateStore?: RateStore }).__tagRateStore = {
-    visitors: new Map(),
-    dayKey: todayKey(),
-    dayCount: 0,
-  });
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10);
+function setCachedTags(text: string, tags: string[]) {
+  if (!tags.length) return;
+  store.cache.set(cacheKey(text), { tags, expires: Date.now() + CACHE_TTL_MS });
 }
 
 function clientIp(req: VercelRequest): string {
@@ -51,13 +70,6 @@ function clientIp(req: VercelRequest): string {
 
 function rateLimited(ip: string): boolean {
   const now = Date.now();
-  const dayKey = todayKey();
-  if (store.dayKey !== dayKey) {
-    store.dayKey = dayKey;
-    store.dayCount = 0;
-  }
-  if (store.dayCount >= DAILY_TOTAL_LIMIT) return true;
-
   const bucket = store.visitors.get(ip) ?? { minuteStart: now, minuteCount: 0 };
   if (now - bucket.minuteStart >= 60_000) {
     bucket.minuteStart = now;
@@ -67,10 +79,8 @@ function rateLimited(ip: string): boolean {
     store.visitors.set(ip, bucket);
     return true;
   }
-
   bucket.minuteCount += 1;
   store.visitors.set(ip, bucket);
-  store.dayCount += 1;
   return false;
 }
 
@@ -98,25 +108,19 @@ function refineTags(tags: string[], text: string): string[] {
   const titleLower = title.toLowerCase();
   const bodyLower = body.toLowerCase();
 
-  const personalTitle =
-    /\b(life balance|wellness|wellbeing|family|personal|journal|self[- ]?care|mental health|relationships?|hobby|hobbies|gratitude|mindfulness|balance|dog|cat|pet|pets|puppy|kitten|vet|veterinar|groomer|pick up|pickup)\b/.test(
-      titleLower,
+  const clearlyPersonal =
+    /\b(life balance|wellness|family|personal|journal|self[- ]?care|dog|cat|pet|pets|puppy|kitten|vet|vets|veterinar|groomer|pick up|pickup|birthday|gift|mom|dad|soccer|kids?)\b/.test(
+      `${titleLower}\n${bodyLower}`,
     );
-  const workTitle =
-    /\b(meeting|meetings|sync|standup|work\b|client|quarterly|roadmap|interview|deadline|sprint)\b/.test(
-      titleLower,
-    );
-  const workBody =
-    /\b(meeting|meetings|sync|standup|client|quarterly|roadmap|interview|deadline|sprint)\b/.test(
-      bodyLower,
+  const clearlyWork =
+    /\b(meeting|meetings|sync|standup|work\b|client|quarterly|roadmap|interview|deadline|sprint|budget review)\b/.test(
+      `${titleLower}\n${bodyLower}`,
     );
 
   let cleaned = [...tags];
-
-  if (personalTitle && !workTitle) {
+  if (clearlyPersonal && !clearlyWork) {
     cleaned = cleaned.filter((tag) => tag !== 'work');
-    if (!cleaned.includes('personal')) cleaned.unshift('personal');
-  } else if (workTitle || workBody) {
+  } else if (clearlyWork && !clearlyPersonal) {
     cleaned = cleaned.filter((tag) => tag !== 'personal');
   }
 
@@ -134,7 +138,7 @@ function fallbackTags(text: string): string[] {
   if (/\b(school|homework|class|exam|study)\b/.test(combined)) picks.push('school');
   if (/\b(travel|flight|trip|vacation)\b/.test(combined)) picks.push('travel');
   if (/\b(idea|brainstorm|sketch)\b/.test(combined)) picks.push('ideas');
-  if (/\b(life balance|wellness|wellbeing|personal|journal|family|hobby|mindfulness|dog|cat|pet|pets|puppy|kitten|vet|vets|veterinar|groomer|pick up|pickup)\b/.test(combined)) {
+  if (/\b(life balance|wellness|personal|journal|family|hobby|dog|cat|pet|pets|vet|vets|groomer|pick up|pickup|birthday|gift|soccer)\b/.test(combined)) {
     picks.push('personal');
   }
   if (/\b(meeting|meetings|sync|standup|work\b|project|client|internship|office|quarterly)\b/.test(combined)) {
@@ -203,29 +207,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'text too long' });
   }
 
-  const ip = clientIp(req);
-  const limited = rateLimited(ip);
+  const cached = getCachedTags(text);
+  if (cached) return res.status(200).json({ tags: cached });
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
+    console.error('[api/tag] GEMINI_API_KEY is not set — AI tagging disabled, using keyword fallback only');
     const tags = fallbackTags(text);
-    if (tags.length) return res.status(200).json({ tags });
+    if (tags.length) {
+      setCachedTags(text, tags);
+      return res.status(200).json({ tags });
+    }
     return res.status(503).json({ error: 'tagging unavailable' });
   }
 
+  const ip = clientIp(req);
+  const limited = rateLimited(ip);
+
+  try {
+    if (!limited) {
+      const tags = await tagWithGemini(text.slice(0, MAX_TEXT_LENGTH), apiKey);
+      setCachedTags(text, tags);
+      return res.status(200).json({ tags });
+    }
+  } catch (error) {
+    console.error('[api/tag] Gemini request failed', error);
+  }
+
+  const tags = fallbackTags(text);
+  if (tags.length) {
+    setCachedTags(text, tags);
+    return res.status(200).json({ tags });
+  }
+
   if (limited) {
-    const tags = fallbackTags(text);
-    if (tags.length) return res.status(200).json({ tags });
     return res.status(429).json({ error: 'try again in a moment' });
   }
 
-  try {
-    const tags = await tagWithGemini(text.slice(0, MAX_TEXT_LENGTH), apiKey);
-    return res.status(200).json({ tags });
-  } catch (error) {
-    console.error('[api/tag] Gemini request failed', error);
-    const tags = fallbackTags(text);
-    if (tags.length) return res.status(200).json({ tags });
-    return res.status(502).json({ error: 'tagging failed' });
-  }
+  return res.status(502).json({ error: 'tagging failed' });
 }
