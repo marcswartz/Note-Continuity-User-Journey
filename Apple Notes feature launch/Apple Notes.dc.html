@@ -18,17 +18,17 @@
     min-height:100svh;
     width:100%;
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:center;
     background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);
-    padding:var(--phone-v-margin) 0;
+    padding:var(--phone-v-margin) 0 0;
     box-sizing:border-box;
   }
   .phone-frame{
     position:relative;
     flex:none;
-    height:min(845px,calc(100svh - var(--phone-v-margin) * 2));
-    aspect-ratio:9/19.5;
+    width:390px;
+    height:845px;
     background:#fff;
     border-radius:54px;
     box-shadow:0 0 0 13px #1b1b1d,0 0 0 15px #38383b,0 34px 90px rgba(0,0,0,.42);
