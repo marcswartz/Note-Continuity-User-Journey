@@ -13,11 +13,21 @@
   html,body{margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:0;height:0;background:transparent;}
-  .phone-stage{min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);padding:12px 0;}
+  .phone-stage{
+    --phone-v-margin:48px;
+    min-height:100svh;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:radial-gradient(circle at 50% 22%,#ecedf1,#d2d3d9);
+    padding:var(--phone-v-margin) 0;
+    box-sizing:border-box;
+  }
   .phone-frame{
     position:relative;
     flex:none;
-    height:min(845px,calc(100svh - 24px));
+    height:min(845px,calc(100svh - var(--phone-v-margin) * 2));
     aspect-ratio:9/19.5;
     background:#fff;
     border-radius:54px;
