@@ -204,14 +204,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const ip = clientIp(req);
-  if (rateLimited(ip)) {
-    return res.status(429).json({ error: 'try again in a moment' });
-  }
+  const limited = rateLimited(ip);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.error('[api/tag] GEMINI_API_KEY is not configured');
+    const tags = fallbackTags(text);
+    if (tags.length) return res.status(200).json({ tags });
     return res.status(503).json({ error: 'tagging unavailable' });
+  }
+
+  if (limited) {
+    const tags = fallbackTags(text);
+    if (tags.length) return res.status(200).json({ tags });
+    return res.status(429).json({ error: 'try again in a moment' });
   }
 
   try {
