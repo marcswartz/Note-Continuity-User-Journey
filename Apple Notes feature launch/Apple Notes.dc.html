@@ -305,7 +305,6 @@
 class Component extends DCLogic {
   _tagTimers = {};
   _tagSeq = {};
-  _liveDraft = {};
   _pendingTags = {};
   _navTimer = null;
   _filterTimer = null;
@@ -313,7 +312,7 @@ class Component extends DCLogic {
   _bodyFocused = false;
 
   state = {
-    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
+    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', editorDraft: null, pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
     navAnim: '', navSettled: false, navTarget: '', navPopFrom: '', navPopTo: '', navParent: 'list',
     filterAnim: '',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
@@ -351,16 +350,31 @@ class Component extends DCLogic {
     return `${openId}-${Date.now()}`;
   }
 
-  captureDetailDraft() {
-    const openId = this.state.openId;
+  readDetailDraftFromDom(openId = this.state.openId) {
     const root = document.getElementById('dc-root');
-    if (!root) return;
+    if (!root) return null;
     const headingEl = root.querySelector('[data-dc-note-heading]');
     const bodyEl = root.querySelector('[data-dc-note-body]');
-    if (!headingEl || !bodyEl) return;
-    const heading = headingEl.value ?? '';
-    const items = this.bodyToItems(bodyEl.value ?? '');
-    this._liveDraft[openId] = { heading, items };
+    if (!headingEl || !bodyEl) return null;
+    return {
+      openId,
+      heading: headingEl.value ?? '',
+      items: this.bodyToItems(bodyEl.value ?? ''),
+    };
+  }
+
+  getEditorDraft(openId = this.state.openId) {
+    if (this.state.editorDraft?.openId === openId) return this.state.editorDraft;
+    return this.readDetailDraftFromDom(openId);
+  }
+
+  editorDraftFromNote(note) {
+    if (!note) return null;
+    return {
+      openId: note.id,
+      heading: note.heading ?? '',
+      items: (note.items ?? ['']).slice(),
+    };
   }
 
   scheduleNavEnd(fn, ms = 420) {
@@ -460,7 +474,7 @@ class Component extends DCLogic {
   }
 
   openNoteText(openId = this.state.openId) {
-    const draft = this._liveDraft[openId];
+    const draft = this.getEditorDraft(openId);
     const note = this.state.notes.find((n) => n.id === openId);
     const heading = draft?.heading ?? note?.heading ?? '';
     const items = draft?.items ?? note?.items ?? [];
@@ -504,16 +518,17 @@ class Component extends DCLogic {
 
   syncDraftToState() {
     const openId = this.state.openId;
-    const draft = this._liveDraft[openId];
+    const draft = this.getEditorDraft(openId);
     if (!draft) return;
-    const patch = {};
-    if (draft.heading != null) {
-      patch.heading = String(draft.heading).trim() || 'New Note';
-      patch.title = patch.heading;
-    }
-    if (draft.items) patch.items = draft.items;
-    if (Object.keys(patch).length) this.applyNotePatch(openId, patch);
-    delete this._liveDraft[openId];
+    const heading = String(draft.heading).trim() || 'New Note';
+    const items = draft.items;
+    const notes = this.state.notes.map((n) => {
+      if (n.id !== openId) return n;
+      const updated = { ...n, heading, title: heading, items };
+      updated.preview = this.previewFrom(updated);
+      return updated;
+    });
+    this.setState({ notes, editorDraft: null });
   }
 
   applyNotePatch(openId, patch) {
@@ -547,9 +562,13 @@ class Component extends DCLogic {
   onHeadingInput(e) {
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
+    const current = this.state.editorDraft?.openId === openId
+      ? this.state.editorDraft
+      : this.editorDraftFromNote(note);
     const heading = e.currentTarget.value || '';
-    const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
-    this._liveDraft[openId] = { heading, items };
+    const items = current?.items || (note?.items || []).slice();
+    const editorDraft = { openId, heading, items };
+    this.setState({ editorDraft });
     this.scheduleTag(openId, this.liveNoteText(heading, items));
   }
 
@@ -558,11 +577,15 @@ class Component extends DCLogic {
     const heading = (e.currentTarget.value || '').trim() || 'New Note';
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
-    const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
-    this._liveDraft[openId] = { heading, items };
+    const current = this.state.editorDraft?.openId === openId
+      ? this.state.editorDraft
+      : this.editorDraftFromNote(note);
+    const items = current?.items || (note?.items || []).slice();
+    const editorDraft = { openId, heading, items };
+    this.setState({ editorDraft });
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading, items });
-    delete this._liveDraft[openId];
+    this.setState({ editorDraft: null });
     this.commitPendingTags(openId);
   }
 
@@ -573,10 +596,14 @@ class Component extends DCLogic {
   onBodyInput(e) {
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
-    const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
+    const current = this.state.editorDraft?.openId === openId
+      ? this.state.editorDraft
+      : this.editorDraftFromNote(note);
+    const heading = current?.heading ?? note?.heading ?? '';
     const items = this.bodyToItems(e.currentTarget.value || '');
-    this._liveDraft[openId] = { heading, items };
-    this.autosizeNoteBody();
+    const editorDraft = { openId, heading, items };
+    this.setState({ editorDraft });
+    this.afterNavPaint(() => this.autosizeNoteBody());
     this.scheduleTag(openId, this.liveNoteText(heading, items));
   }
 
@@ -584,12 +611,16 @@ class Component extends DCLogic {
     this._bodyFocused = false;
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
-    const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
+    const current = this.state.editorDraft?.openId === openId
+      ? this.state.editorDraft
+      : this.editorDraftFromNote(note);
+    const heading = current?.heading ?? note?.heading ?? '';
     const items = this.bodyToItems(e.currentTarget.value || '');
-    this._liveDraft[openId] = { heading, items };
+    const editorDraft = { openId, heading, items };
+    this.setState({ editorDraft });
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
-    delete this._liveDraft[openId];
+    this.setState({ editorDraft: null });
     this.commitPendingTags(openId);
   }
 
@@ -652,12 +683,15 @@ class Component extends DCLogic {
     const notes = [note, ...this.state.notes];
     const tags = { ...this.state.tags, [id]: [] };
     const detailEditorKey = this.bumpDetailEditorKey(id);
-    this.startNavPush('detail', { notes, tags, openId: id, detailEditorKey });
+    const editorDraft = { openId: id, heading: 'New Note', items: [''] };
+    this.startNavPush('detail', { notes, tags, openId: id, detailEditorKey, editorDraft });
   }
 
   open(id) {
+    const note = this.state.notes.find((n) => n.id === id);
     const detailEditorKey = this.bumpDetailEditorKey(id);
-    this.startNavPush('detail', { openId: id, detailEditorKey });
+    const editorDraft = this.editorDraftFromNote(note);
+    this.startNavPush('detail', { openId: id, detailEditorKey, editorDraft });
   }
   goList() {
     const openId = this.state.openId;
@@ -665,7 +699,6 @@ class Component extends DCLogic {
     this._headingFocused = false;
     this._bodyFocused = false;
     if (from === 'detail') {
-      this.captureDetailDraft();
       this.flushTagForOpenNote();
       this.syncDraftToState();
       setTimeout(() => this.commitPendingTags(openId), 2500);
@@ -849,7 +882,7 @@ class Component extends DCLogic {
     const showBanner = showList && s.filter === 'All' && activeCount > 0;
 
     const note = notes.find(n => n.id === s.openId) || notes[0];
-    const draft = this._liveDraft[s.openId];
+    const editorDraft = s.editorDraft?.openId === s.openId ? s.editorDraft : null;
     const detailTags = this.tagsFor(s.openId).map(t => ({ name: t }));
     const rem = s.reminders[s.openId];
     const hasReminder = !!rem;
@@ -894,8 +927,8 @@ class Component extends DCLogic {
       composeNote: () => this.composeNote(),
       bellBtnStyle, hashBtnStyle, openReminderSheet: () => this.openSheet('reminder'), openTagSheet: () => this.openSheet('tag'),
       detailEditorKey: s.detailEditorKey || s.openId,
-      detailHeading: draft?.heading ?? (note ? note.heading : ''),
-      detailBody: this.itemsToBody(draft?.items ?? (note ? note.items : [])),
+      detailHeading: editorDraft?.heading ?? (note ? note.heading : ''),
+      detailBody: this.itemsToBody(editorDraft?.items ?? (note ? note.items : [])),
       detailDate: note ? note.date : '', detailTags,
       onHeadingFocus: () => this.onHeadingFocus(),
       onHeadingInput: (e) => this.onHeadingInput(e),
