@@ -311,14 +311,17 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
+  TAG_IDLE_MS = 2000;
   _tagTimers = {};
   _tagSeq = {};
   _tagAnimTimer = null;
+  _revealTagTimers = {};
   _pendingTags = {};
   _navTimer = null;
   _filterTimer = null;
   _headingFocused = false;
   _bodyFocused = false;
+  _lastInputAt = 0;
 
   state = {
     screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', editorDraft: null, tagAnim: {}, pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
@@ -344,6 +347,7 @@ class Component extends DCLogic {
 
   componentWillUnmount() {
     Object.values(this._tagTimers).forEach((t) => clearTimeout(t));
+    Object.values(this._revealTagTimers).forEach((t) => clearTimeout(t));
     clearTimeout(this._navTimer);
     clearTimeout(this._filterTimer);
     clearTimeout(this._tagAnimTimer);
@@ -524,15 +528,39 @@ class Component extends DCLogic {
     return tagAnim;
   }
 
+  touchTagInput() {
+    this._lastInputAt = Date.now();
+  }
+
+  isActivelyTyping(noteId = this.state.openId) {
+    if (this.state.screen !== 'detail' || this.state.openId !== noteId) return false;
+    if (!this._headingFocused && !this._bodyFocused) return false;
+    return Date.now() - this._lastInputAt < this.TAG_IDLE_MS;
+  }
+
+  scheduleRevealPendingTags(noteId) {
+    clearTimeout(this._revealTagTimers[noteId]);
+    this._revealTagTimers[noteId] = setTimeout(() => {
+      if (this._pendingTags[noteId] && !this.isActivelyTyping(noteId)) {
+        this.commitPendingTags(noteId, { animate: true });
+      }
+    }, this.TAG_IDLE_MS);
+  }
+
+  revealPendingTagsNow(noteId) {
+    clearTimeout(this._revealTagTimers[noteId]);
+    if (this._pendingTags[noteId]) this.commitPendingTags(noteId, { animate: true });
+  }
+
   applyTags(noteId, tags) {
     const cleaned = tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
     if (!cleaned.length) return;
     this._pendingTags[noteId] = cleaned;
-    const stillTyping =
-      this.state.screen === 'detail' &&
-      this.state.openId === noteId &&
-      (this._headingFocused || this._bodyFocused);
-    if (!stillTyping) this.commitPendingTags(noteId, { animate: true });
+    if (this.isActivelyTyping(noteId)) {
+      this.scheduleRevealPendingTags(noteId);
+      return;
+    }
+    this.commitPendingTags(noteId, { animate: true });
   }
 
   isEditingDetail() {
@@ -540,7 +568,7 @@ class Component extends DCLogic {
   }
 
   tagsFor(noteId) {
-    return this._pendingTags[noteId] || this.state.tags[noteId] || [];
+    return this.state.tags[noteId] || [];
   }
 
   usedTags() {
@@ -595,7 +623,7 @@ class Component extends DCLogic {
   scheduleTag(noteId, text) {
     if (!text || !String(text).trim()) return;
     clearTimeout(this._tagTimers[noteId]);
-    this._tagTimers[noteId] = setTimeout(() => this.fetchTagsForNote(noteId, text), 800);
+    this._tagTimers[noteId] = setTimeout(() => this.fetchTagsForNote(noteId, text), this.TAG_IDLE_MS);
   }
 
   flushTagForOpenNote() {
@@ -619,6 +647,7 @@ class Component extends DCLogic {
     const items = current?.items || (note?.items || []).slice();
     const editorDraft = { openId, heading, items };
     this.setState({ editorDraft });
+    this.touchTagInput();
     this.scheduleTag(openId, this.liveNoteText(heading, items));
   }
 
@@ -636,7 +665,7 @@ class Component extends DCLogic {
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading, items });
     this.setState({ editorDraft: null });
-    this.commitPendingTags(openId, { animate: true });
+    this.revealPendingTagsNow(openId);
   }
 
   onBodyFocus() {
@@ -653,6 +682,7 @@ class Component extends DCLogic {
     const items = this.bodyToItems(e.currentTarget.value || '');
     const editorDraft = { openId, heading, items };
     this.setState({ editorDraft });
+    this.touchTagInput();
     this.afterNavPaint(() => this.autosizeNoteBody());
     this.scheduleTag(openId, this.liveNoteText(heading, items));
   }
@@ -671,7 +701,7 @@ class Component extends DCLogic {
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
     this.setState({ editorDraft: null });
-    this.commitPendingTags(openId, { animate: true });
+    this.revealPendingTagsNow(openId);
   }
 
   async requestTags(text, signal) {
@@ -751,7 +781,7 @@ class Component extends DCLogic {
     if (from === 'detail') {
       this.flushTagForOpenNote();
       this.syncDraftToState();
-      setTimeout(() => this.commitPendingTags(openId, { animate: true }), 2500);
+      this.revealPendingTagsNow(openId);
     }
     if (from === 'list') {
       this.setState({ sheet: null });
