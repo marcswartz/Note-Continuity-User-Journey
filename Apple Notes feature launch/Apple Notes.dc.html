@@ -24,6 +24,14 @@
   }
   .note-heading{font-size:30px;font-weight:800;color:#1c1c1e;padding-top:18px;letter-spacing:-.6px;}
   .note-body{font-size:18px;color:#2a2a2c;padding-top:14px;line-height:1.34;min-height:120px;resize:none;overflow:hidden;white-space:pre-wrap;}
+  @keyframes tag-pill-in{
+    from{opacity:0;transform:scale(.86) translateY(8px);}
+    to{opacity:1;transform:scale(1) translateY(0);}
+  }
+  @keyframes tag-badge-in{
+    from{opacity:0;transform:scale(.9);}
+    to{opacity:1;transform:scale(1);}
+  }
   .phone-stage{
     --phone-v-margin:48px;
     min-height:100svh;
@@ -115,7 +123,7 @@
                 <div style="display:flex;align-items:center;gap:6px;margin-top:9px;flex-wrap:wrap;">
                   <sc-for list="{{ note.badges }}" as="b" hint-placeholder-count="1">
                     <sc-if value="{{ b.plain }}" hint-placeholder-val="{{ true }}">
-                      <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:11px;background:#F7EBCB;color:#B5881C;font-size:13px;font-weight:500;">{{ b.label }}</span>
+                      <span style="{{ b.style }}">{{ b.label }}</span>
                     </sc-if>
                     <sc-if value="{{ b.icon }}" hint-placeholder-val="{{ true }}">
                       <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:11px;background:#F7EBCB;color:#C68A12;font-size:13px;font-weight:500;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ b.label }}</span>
@@ -197,7 +205,7 @@
 
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:16px 20px 0;">
         <sc-for list="{{ detailTags }}" as="t" hint-placeholder-count="1">
-          <span style="padding:5px 13px;border-radius:13px;background:#F7EBCB;color:#B5881C;font-size:15px;font-weight:500;">#{{ t.name }}</span>
+          <span style="{{ t.style }}">#{{ t.name }}</span>
         </sc-for>
         <div onClick="{{ openTagSheet }}" style="width:30px;height:30px;border-radius:50%;background:#EFEFF2;color:#8A8A8E;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
       </div>
@@ -305,6 +313,7 @@
 class Component extends DCLogic {
   _tagTimers = {};
   _tagSeq = {};
+  _tagAnimTimer = null;
   _pendingTags = {};
   _navTimer = null;
   _filterTimer = null;
@@ -312,7 +321,7 @@ class Component extends DCLogic {
   _bodyFocused = false;
 
   state = {
-    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', editorDraft: null, pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
+    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', editorDraft: null, tagAnim: {}, pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
     navAnim: '', navSettled: false, navTarget: '', navPopFrom: '', navPopTo: '', navParent: 'list',
     filterAnim: '',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
@@ -337,6 +346,7 @@ class Component extends DCLogic {
     Object.values(this._tagTimers).forEach((t) => clearTimeout(t));
     clearTimeout(this._navTimer);
     clearTimeout(this._filterTimer);
+    clearTimeout(this._tagAnimTimer);
   }
 
   autosizeNoteBody() {
@@ -481,6 +491,39 @@ class Component extends DCLogic {
     return this.liveNoteText(heading, items);
   }
 
+  isTagAnimating(noteId, tag) {
+    return !!this.state.tagAnim?.[`${noteId}:${tag}`];
+  }
+
+  tagPillStyle(noteId, tag, index = 0) {
+    const base = 'display:inline-flex;align-items:center;padding:5px 13px;border-radius:13px;background:#F7EBCB;color:#B5881C;font-size:15px;font-weight:500;';
+    if (!this.isTagAnimating(noteId, tag)) return base;
+    const delay = index * 90;
+    return `${base}animation:tag-pill-in .42s cubic-bezier(.32,.72,0,1) ${delay}ms both;`;
+  }
+
+  tagBadgeStyle(noteId, tag, index = 0) {
+    const base = 'display:inline-flex;align-items:center;padding:3px 10px;border-radius:11px;background:#F7EBCB;color:#B5881C;font-size:13px;font-weight:500;';
+    if (!this.isTagAnimating(noteId, tag)) return base;
+    const delay = index * 70;
+    return `${base}animation:tag-badge-in .36s cubic-bezier(.32,.72,0,1) ${delay}ms both;`;
+  }
+
+  markTagsAnimated(noteId, prev, next) {
+    const tagAnim = { ...(this.state.tagAnim || {}) };
+    let added = false;
+    next.forEach((t) => {
+      if (!prev.includes(t)) {
+        tagAnim[`${noteId}:${t}`] = true;
+        added = true;
+      }
+    });
+    if (!added) return null;
+    clearTimeout(this._tagAnimTimer);
+    this._tagAnimTimer = setTimeout(() => this.setState({ tagAnim: {} }), 650);
+    return tagAnim;
+  }
+
   applyTags(noteId, tags) {
     const cleaned = tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
     if (!cleaned.length) return;
@@ -489,7 +532,7 @@ class Component extends DCLogic {
       this.state.screen === 'detail' &&
       this.state.openId === noteId &&
       (this._headingFocused || this._bodyFocused);
-    if (!stillTyping) this.commitPendingTags(noteId);
+    if (!stillTyping) this.commitPendingTags(noteId, { animate: true });
   }
 
   isEditingDetail() {
@@ -508,12 +551,19 @@ class Component extends DCLogic {
     return [...tags].sort((a, b) => a.localeCompare(b));
   }
 
-  commitPendingTags(noteId) {
+  commitPendingTags(noteId, { animate = false } = {}) {
     if (!this._pendingTags[noteId]) return;
-    const tg = { ...this.state.tags };
-    tg[noteId] = this._pendingTags[noteId];
+    const prev = this.state.tags[noteId] || [];
+    const next = this._pendingTags[noteId];
     delete this._pendingTags[noteId];
-    this.setState({ tags: tg });
+    const tg = { ...this.state.tags };
+    tg[noteId] = next;
+    const patch = { tags: tg };
+    if (animate) {
+      const tagAnim = this.markTagsAnimated(noteId, prev, next);
+      if (tagAnim) patch.tagAnim = tagAnim;
+    }
+    this.setState(patch);
   }
 
   syncDraftToState() {
@@ -586,7 +636,7 @@ class Component extends DCLogic {
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading, items });
     this.setState({ editorDraft: null });
-    this.commitPendingTags(openId);
+    this.commitPendingTags(openId, { animate: true });
   }
 
   onBodyFocus() {
@@ -621,7 +671,7 @@ class Component extends DCLogic {
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
     this.setState({ editorDraft: null });
-    this.commitPendingTags(openId);
+    this.commitPendingTags(openId, { animate: true });
   }
 
   async requestTags(text, signal) {
@@ -701,7 +751,7 @@ class Component extends DCLogic {
     if (from === 'detail') {
       this.flushTagForOpenNote();
       this.syncDraftToState();
-      setTimeout(() => this.commitPendingTags(openId), 2500);
+      setTimeout(() => this.commitPendingTags(openId, { animate: true }), 2500);
     }
     if (from === 'list') {
       this.setState({ sheet: null });
@@ -866,7 +916,12 @@ class Component extends DCLogic {
     const groups = order.map(name => {
       const items = visible.filter(n => n.section === name).map((n, i) => {
         const tags = this.tagsFor(n.id);
-        const badges = tags.map(t => ({ label: t, plain: true, icon: false }));
+        const badges = tags.map((t, i) => ({
+          label: t,
+          plain: true,
+          icon: false,
+          style: this.tagBadgeStyle(n.id, t, i),
+        }));
         if (n.overdue) badges.push({ label: 'Overdue', plain: false, icon: true });
         else if (n.reminderBadge) badges.push({ label: n.reminderBadge, plain: false, icon: true });
         return { ...n, notFirst: i > 0, badges, onOpen: () => this.open(n.id) };
@@ -883,7 +938,10 @@ class Component extends DCLogic {
 
     const note = notes.find(n => n.id === s.openId) || notes[0];
     const editorDraft = s.editorDraft?.openId === s.openId ? s.editorDraft : null;
-    const detailTags = this.tagsFor(s.openId).map(t => ({ name: t }));
+    const detailTags = this.tagsFor(s.openId).map((t, i) => ({
+      name: t,
+      style: this.tagPillStyle(s.openId, t, i),
+    }));
     const rem = s.reminders[s.openId];
     const hasReminder = !!rem;
     const reminderText = rem ? rem.text : '';
