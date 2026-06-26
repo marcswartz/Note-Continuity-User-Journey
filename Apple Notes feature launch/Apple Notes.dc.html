@@ -13,7 +13,7 @@
   html,body{margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:0;height:0;background:transparent;}
-  .note-heading,.note-body{
+  .note-heading,.note-body-input{
     display:block;width:100%;
     border:none;outline:none;
     background:transparent;
@@ -23,7 +23,27 @@
     -webkit-appearance:none;appearance:none;
   }
   .note-heading{font-size:30px;font-weight:800;color:#1c1c1e;padding-top:18px;letter-spacing:-.6px;}
-  .note-body{font-size:18px;color:#2a2a2c;padding-top:14px;line-height:1.34;min-height:120px;resize:none;overflow:hidden;white-space:pre-wrap;}
+  .note-body-wrap{position:relative;padding-top:14px;}
+  .note-body-mirror,.note-body-input{
+    display:block;width:100%;
+    border:none;outline:none;margin:0;
+    font-family:inherit;font-size:18px;line-height:1.34;
+    padding:0 20px;white-space:pre-wrap;word-wrap:break-word;
+  }
+  .note-body-mirror{
+    position:absolute;top:14px;left:0;right:0;
+    color:#2a2a2c;pointer-events:none;
+  }
+  .note-body-input{
+    position:relative;z-index:1;
+    min-height:120px;resize:none;overflow:hidden;
+    background:transparent;color:transparent;caret-color:#2a2a2c;
+    -webkit-appearance:none;appearance:none;
+  }
+  .note-list-line{display:flex;align-items:flex-start;gap:10px;}
+  .note-list-marker{flex:none;width:10px;color:#9a9a9e;}
+  .note-list-text{flex:1;min-width:0;}
+  .note-plain-line{min-height:1.34em;}
   @keyframes tag-pill-in{
     from{opacity:0;transform:scale(.86) translateY(8px);}
     to{opacity:1;transform:scale(1) translateY(0);}
@@ -219,7 +239,10 @@
       </sc-if>
 
       <input type="text" data-dc-note-heading="1" key="{{ detailEditorKey }}-h" value="{{ detailHeading }}" onFocus="{{ onHeadingFocus }}" onInput="{{ onHeadingInput }}" onBlur="{{ onHeadingBlur }}" class="note-heading" />
-      <textarea data-dc-note-body="1" key="{{ detailEditorKey }}-b" value="{{ detailBody }}" onFocus="{{ onBodyFocus }}" onInput="{{ onBodyInput }}" onBlur="{{ onBodyBlur }}" rows="3" class="note-body"></textarea>
+      <div class="note-body-wrap">
+        <div data-dc-note-body-mirror="1" class="note-body-mirror" aria-hidden="true"></div>
+        <textarea data-dc-note-body="1" key="{{ detailEditorKey }}-b" value="{{ detailBody }}" onFocus="{{ onBodyFocus }}" onInput="{{ onBodyInput }}" onKeyDown="{{ onBodyKeyDown }}" onBlur="{{ onBodyBlur }}" rows="3" class="note-body-input"></textarea>
+      </div>
     </div>
     </div>
     </div>
@@ -330,19 +353,19 @@ class Component extends DCLogic {
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
     tags: { grocery: ['grocery'], design: ['work'], workout: ['health'], costco: ['grocery'] },
     notes: [
-      { id: 'grocery', section: 'Today', title: 'Grocery List', when: '30m ago', preview: 'Olive oil', desc: 'Weekly grocery essentials', date: 'June 17, 2026 at 9:17 PM', overdue: true, heading: 'Grocery List', items: ['Olive oil', 'Sourdough bread', 'Avocados (3)', 'Cherry tomatoes', 'Fresh mozzarella', 'Basil', 'Lemons', 'Almond milk'] },
-      { id: 'design', section: 'Today', title: 'Design sync notes', when: '8:47 PM', preview: 'Attendees: Sarah, Mike, Jordan', desc: 'Design sync action items and decisions', date: 'June 17, 2026 at 8:47 PM', reminderBadge: 'Today 10:00 AM', heading: 'Design sync notes', items: ['Attendees: Sarah, Mike, Jordan', 'Reviewed the Q3 roadmap', 'Decision: ship tag filters first', 'Mike to spec the reminder sheet', 'Sarah to audit empty states', 'Next sync Friday 10:00 AM'] },
-      { id: 'workout', section: 'Today', title: 'Week 12 workout plan', when: '4:47 PM', preview: 'Monday: Upper body', desc: 'Current workout schedule', date: 'June 17, 2026 at 4:47 PM', heading: 'Week 12 workout plan', items: ['Monday: Upper body', 'Tuesday: Zone 2 cardio (40 min)', 'Wednesday: Lower body', 'Thursday: Rest / mobility', 'Friday: Full body', 'Saturday: Long run (8 mi)'] },
-      { id: 'costco', section: 'Yesterday', title: 'Costco grocery run', when: 'Yesterday', preview: 'Paper towels (bulk)', desc: 'Costco bulk shopping list', date: 'June 16, 2026 at 7:12 PM', heading: 'Costco grocery run', items: ['Paper towels (bulk)', 'Rotisserie chicken', 'Eggs (24 ct)', 'Olive oil (2 L)', 'Frozen berries', 'Coffee beans', 'Dish soap'] },
+      { id: 'grocery', section: 'Today', title: 'Grocery List', when: '30m ago', preview: 'Olive oil', desc: 'Weekly grocery essentials', date: 'June 17, 2026 at 9:17 PM', overdue: true, heading: 'Grocery List', items: ['- Olive oil', '- Sourdough bread', '- Avocados (3)', '- Cherry tomatoes', '- Fresh mozzarella', '- Basil', '- Lemons', '- Almond milk'] },
+      { id: 'design', section: 'Today', title: 'Design sync notes', when: '8:47 PM', preview: 'Attendees: Sarah, Mike, Jordan', desc: 'Design sync action items and decisions', date: 'June 17, 2026 at 8:47 PM', reminderBadge: 'Today 10:00 AM', heading: 'Design sync notes', items: ['- Attendees: Sarah, Mike, Jordan', '- Reviewed the Q3 roadmap', '- Decision: ship tag filters first', '- Mike to spec the reminder sheet', '- Sarah to audit empty states', '- Next sync Friday 10:00 AM'] },
+      { id: 'workout', section: 'Today', title: 'Week 12 workout plan', when: '4:47 PM', preview: 'Monday: Upper body', desc: 'Current workout schedule', date: 'June 17, 2026 at 4:47 PM', heading: 'Week 12 workout plan', items: ['- Monday: Upper body', '- Tuesday: Zone 2 cardio (40 min)', '- Wednesday: Lower body', '- Thursday: Rest / mobility', '- Friday: Full body', '- Saturday: Long run (8 mi)'] },
+      { id: 'costco', section: 'Yesterday', title: 'Costco grocery run', when: 'Yesterday', preview: 'Paper towels (bulk)', desc: 'Costco bulk shopping list', date: 'June 16, 2026 at 7:12 PM', heading: 'Costco grocery run', items: ['- Paper towels (bulk)', '- Rotisserie chicken', '- Eggs (24 ct)', '- Olive oil (2 L)', '- Frozen berries', '- Coffee beans', '- Dish soap'] },
     ],
   };
 
   componentDidMount() {
-    this.autosizeNoteBody();
+    this.afterNavPaint(() => this.syncBodyMirror());
   }
 
   componentDidUpdate() {
-    this.autosizeNoteBody();
+    this.afterNavPaint(() => this.syncBodyMirror());
   }
 
   componentWillUnmount() {
@@ -358,6 +381,53 @@ class Component extends DCLogic {
     if (!bodyEl) return;
     bodyEl.style.height = 'auto';
     bodyEl.style.height = `${bodyEl.scrollHeight}px`;
+    const mirror = document.getElementById('dc-root')?.querySelector('[data-dc-note-body-mirror]');
+    if (mirror) mirror.style.minHeight = bodyEl.style.height;
+  }
+
+  escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  isListLine(line) {
+    return /^-\s/.test(line);
+  }
+
+  bodyCaretLine(ta, pos = ta.selectionStart) {
+    const val = ta.value;
+    const before = val.slice(0, pos);
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const nextBreak = val.indexOf('\n', pos);
+    const lineEnd = nextBreak === -1 ? val.length : nextBreak;
+    const line = val.slice(lineStart, lineEnd);
+    const col = pos - lineStart;
+    return { lineStart, lineEnd, line, col, lineBeforeCursor: line.slice(0, col) };
+  }
+
+  setBodyValue(ta, value, cursor) {
+    ta.value = value;
+    ta.setSelectionRange(cursor, cursor);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    this.syncBodyMirror();
+  }
+
+  syncBodyMirror() {
+    const ta = document.getElementById('dc-root')?.querySelector('[data-dc-note-body]');
+    const mirror = document.getElementById('dc-root')?.querySelector('[data-dc-note-body-mirror]');
+    if (!ta || !mirror) return;
+    const lines = ta.value.split('\n');
+    mirror.innerHTML = lines.map((line) => {
+      if (this.isListLine(line)) {
+        const text = line.slice(2);
+        return `<div class="note-list-line"><span class="note-list-marker">-</span><span class="note-list-text">${this.escapeHtml(text) || '\u00a0'}</span></div>`;
+      }
+      return `<div class="note-plain-line">${line ? this.escapeHtml(line) : '\u00a0'}</div>`;
+    }).join('');
+    this.autosizeNoteBody();
   }
 
   bumpDetailEditorKey(openId) {
@@ -478,8 +548,9 @@ class Component extends DCLogic {
   }
 
   previewFrom(note) {
-    const line = (note.items || []).map((l) => String(l || '').trim()).find(Boolean);
-    return line || String(note.heading || note.title || '').trim() || 'No additional text';
+    const strip = (l) => String(l || '').trim().replace(/^-\s*/, '');
+    const line = (note.items || []).map(strip).find(Boolean);
+    return line || strip(note.heading || note.title || '') || 'No additional text';
   }
 
   liveNoteText(heading, items) {
@@ -683,8 +754,40 @@ class Component extends DCLogic {
     const editorDraft = { openId, heading, items };
     this.setState({ editorDraft });
     this.touchTagInput();
-    this.afterNavPaint(() => this.autosizeNoteBody());
+    this.syncBodyMirror();
     this.scheduleTag(openId, this.liveNoteText(heading, items));
+  }
+
+  onBodyKeyDown(e) {
+    const ta = e.currentTarget;
+    const { lineStart, lineEnd, line, col, lineBeforeCursor } = this.bodyCaretLine(ta);
+
+    if (e.key === 'Enter') {
+      if (this.isListLine(line)) {
+        e.preventDefault();
+        const itemText = line.slice(2).trim();
+        if (!itemText) {
+          const newVal = ta.value.slice(0, lineStart) + '\n' + ta.value.slice(lineEnd);
+          this.setBodyValue(ta, newVal, lineStart + 1);
+        } else {
+          const pos = ta.selectionStart;
+          const insert = '\n- ';
+          const newVal = ta.value.slice(0, pos) + insert + ta.value.slice(ta.selectionEnd);
+          this.setBodyValue(ta, newVal, pos + insert.length);
+        }
+      }
+      return;
+    }
+
+    if (e.key === ' ' && lineBeforeCursor === '-' && col === 1) {
+      return;
+    }
+
+    if (e.key === 'Backspace' && col <= 2 && /^-\s?$/.test(line)) {
+      e.preventDefault();
+      const newVal = ta.value.slice(0, lineStart) + ta.value.slice(lineEnd);
+      this.setBodyValue(ta, newVal, lineStart);
+    }
   }
 
   onBodyBlur(e) {
@@ -1023,6 +1126,7 @@ class Component extends DCLogic {
       onHeadingBlur: (e) => this.onHeadingBlur(e),
       onBodyFocus: () => this.onBodyFocus(),
       onBodyInput: (e) => this.onBodyInput(e),
+      onBodyKeyDown: (e) => this.onBodyKeyDown(e),
       onBodyBlur: (e) => this.onBodyBlur(e),
       hasReminder, reminderText, hasRepeat, reminderRepeat,
       backdropStyle, closeSheet: () => this.closeSheet(),
