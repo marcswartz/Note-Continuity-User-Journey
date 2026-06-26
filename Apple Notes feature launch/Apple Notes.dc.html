@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -88,6 +88,37 @@
     flex:none;padding:7px 17px;border-radius:18px;font-size:15px;cursor:pointer;
     transition:background .24s cubic-bezier(.32,.72,0,1),color .24s cubic-bezier(.32,.72,0,1);
   }
+  @media (max-width:520px){
+    html,body{
+      overflow:hidden;
+      height:100%;
+      overscroll-behavior:none;
+    }
+    .phone-stage{
+      position:fixed;inset:0;
+      min-height:100dvh;height:100dvh;
+      padding:0;
+      background:#F2F2F7;
+      align-items:stretch;
+      justify-content:stretch;
+    }
+    .phone-frame{
+      width:100%;
+      height:100dvh;
+      border-radius:0;
+      box-shadow:none;
+    }
+    .phone-chrome{display:none!important;}
+    .app-scroll{padding-top:max(10px,env(safe-area-inset-top))!important;}
+    .app-scroll-list{padding-bottom:max(128px,calc(108px + env(safe-area-inset-bottom)))!important;}
+    .app-scroll-active{padding-bottom:max(40px,calc(20px + env(safe-area-inset-bottom)))!important;}
+    .app-scroll-detail{padding-bottom:max(48px,calc(28px + env(safe-area-inset-bottom)))!important;}
+    .app-bottom-bar{padding-bottom:max(22px,calc(12px + env(safe-area-inset-bottom)))!important;}
+    .phone-frame [style*="overflow-y:auto"]{
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
+    }
+  }
 </style>
 </helmet>
 
@@ -98,7 +129,7 @@
     <div class="nav-stack">
     <div class="nav-layer nav-layer-list" style="{{ listNavStyle }}">
     <div style="position:absolute;inset:0;background:#F2F2F7;">
-      <div style="position:absolute;inset:0;overflow-y:auto;padding-top:52px;padding-bottom:128px;">
+      <div class="app-scroll app-scroll-list" style="position:absolute;inset:0;overflow-y:auto;padding-top:52px;padding-bottom:128px;">
         <div style="display:flex;justify-content:flex-end;padding:4px 16px 0;">
           <div style="width:34px;height:34px;border-radius:50%;background:#E7E7EC;color:#8A8A8E;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg></div>
         </div>
@@ -166,7 +197,7 @@
       <div style="position:absolute;top:0;left:0;right:0;height:96px;z-index:30;pointer-events:none;background:linear-gradient(to bottom,#F2F2F7 0%,rgba(242,242,247,.88) 38%,rgba(242,242,247,0) 100%);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.75) 42%,rgba(0,0,0,.25) 72%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.75) 42%,rgba(0,0,0,.25) 72%,transparent 100%);"></div>
 
       <!-- bottom search bar -->
-      <div style="position:absolute;left:0;right:0;bottom:0;z-index:30;padding:22px 14px 30px;background:linear-gradient(to top,#F2F2F7 58%,rgba(242,242,247,.92) 78%,rgba(242,242,247,0));backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;gap:11px;">
+      <div class="app-bottom-bar" style="position:absolute;left:0;right:0;bottom:0;z-index:30;padding:22px 14px 30px;background:linear-gradient(to top,#F2F2F7 58%,rgba(242,242,247,.92) 78%,rgba(242,242,247,0));backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;gap:11px;">
         <div style="flex:1;display:flex;align-items:center;gap:8px;background:rgba(118,118,128,.14);border-radius:20px;padding:11px 14px;">
           <span style="color:#8A8A8E;display:flex;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
           <span style="color:#8A8A8E;font-size:17px;flex:1;">Search</span>
@@ -178,7 +209,7 @@
     </div>
 
     <div class="nav-layer nav-layer-active" style="{{ activeNavStyle }}">
-    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:52px;padding-bottom:40px;">
+    <div class="app-scroll app-scroll-active" style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:52px;padding-bottom:40px;">
       <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;padding:8px 16px 0;font-size:17px;font-weight:500;cursor:pointer;width:fit-content;">
         <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
       </div>
@@ -207,7 +238,7 @@
     </div>
 
     <div class="nav-layer nav-layer-detail" style="{{ detailNavStyle }}">
-    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:50px;padding-bottom:48px;">
+    <div class="app-scroll app-scroll-detail" style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:50px;padding-bottom:48px;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px;">
         <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;font-size:17px;font-weight:500;cursor:pointer;padding:4px 8px;">
           <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
@@ -315,7 +346,8 @@
       </div>
     </div>
 
-    <!-- ===== STATUS BAR + ISLAND + HOME ===== -->
+    <!-- ===== STATUS BAR + ISLAND + HOME (desktop mockup only) ===== -->
+    <div class="phone-chrome">
     <div style="position:absolute;top:11px;left:0;right:0;height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;z-index:100;pointer-events:none;">
       <div style="font-size:16px;font-weight:600;color:#000;letter-spacing:.2px;line-height:1;">9:17</div>
       <div style="display:flex;align-items:center;gap:7px;color:#000;">
@@ -326,6 +358,7 @@
     </div>
     <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#000;border-radius:20px;z-index:101;pointer-events:none;"></div>
     <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:138px;height:5px;border-radius:3px;background:#1c1c1e;opacity:.9;z-index:102;pointer-events:none;"></div>
+    </div>
 
   </div>
 </div>
