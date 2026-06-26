@@ -13,6 +13,17 @@
   html,body{margin:0;padding:0;}
   body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;}
   ::-webkit-scrollbar{width:0;height:0;background:transparent;}
+  .note-heading,.note-body{
+    display:block;width:100%;
+    border:none;outline:none;
+    background:transparent;
+    font-family:inherit;
+    padding-left:20px;padding-right:20px;
+    margin:0;
+    -webkit-appearance:none;appearance:none;
+  }
+  .note-heading{font-size:30px;font-weight:800;color:#1c1c1e;padding-top:18px;letter-spacing:-.6px;}
+  .note-body{font-size:18px;color:#2a2a2c;padding-top:14px;line-height:1.34;min-height:120px;resize:none;overflow:hidden;white-space:pre-wrap;}
   .phone-stage{
     --phone-v-margin:48px;
     min-height:100svh;
@@ -199,12 +210,8 @@
         </div>
       </sc-if>
 
-      <div contenteditable="true" onFocus="{{ onHeadingFocus }}" onInput="{{ onHeadingInput }}" onBlur="{{ onHeadingBlur }}" style="font-size:30px;font-weight:800;color:#1c1c1e;padding:18px 20px 0;letter-spacing:-.6px;outline:none;">{{ detailHeading }}</div>
-      <div style="padding:14px 20px 0;">
-        <sc-for list="{{ bodyItems }}" as="it" hint-placeholder-count="6">
-          <div style="display:flex;gap:11px;font-size:18px;color:#2a2a2c;padding:5px 0;line-height:1.34;"><span style="color:#9a9a9e;">•</span><span contenteditable="true" onFocus="{{ it.onFocus }}" onInput="{{ it.onInput }}" onBlur="{{ it.onBlur }}" style="flex:1;outline:none;">{{ it.text }}</span></div>
-        </sc-for>
-      </div>
+      <input type="text" data-dc-note-heading="1" key="{{ detailEditorKey }}-h" value="{{ detailHeading }}" onFocus="{{ onHeadingFocus }}" onInput="{{ onHeadingInput }}" onBlur="{{ onHeadingBlur }}" class="note-heading" />
+      <textarea data-dc-note-body="1" key="{{ detailEditorKey }}-b" value="{{ detailBody }}" onFocus="{{ onBodyFocus }}" onInput="{{ onBodyInput }}" onBlur="{{ onBodyBlur }}" rows="3" class="note-body"></textarea>
     </div>
     </div>
     </div>
@@ -306,7 +313,7 @@ class Component extends DCLogic {
   _bodyFocused = false;
 
   state = {
-    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
+    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', detailEditorKey: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
     navAnim: '', navSettled: false, navTarget: '', navPopFrom: '', navPopTo: '', navParent: 'list',
     filterAnim: '',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
@@ -319,10 +326,41 @@ class Component extends DCLogic {
     ],
   };
 
+  componentDidMount() {
+    this.autosizeNoteBody();
+  }
+
+  componentDidUpdate() {
+    this.autosizeNoteBody();
+  }
+
   componentWillUnmount() {
     Object.values(this._tagTimers).forEach((t) => clearTimeout(t));
     clearTimeout(this._navTimer);
     clearTimeout(this._filterTimer);
+  }
+
+  autosizeNoteBody() {
+    const bodyEl = document.getElementById('dc-root')?.querySelector('[data-dc-note-body]');
+    if (!bodyEl) return;
+    bodyEl.style.height = 'auto';
+    bodyEl.style.height = `${bodyEl.scrollHeight}px`;
+  }
+
+  bumpDetailEditorKey(openId) {
+    return `${openId}-${Date.now()}`;
+  }
+
+  captureDetailDraft() {
+    const openId = this.state.openId;
+    const root = document.getElementById('dc-root');
+    if (!root) return;
+    const headingEl = root.querySelector('[data-dc-note-heading]');
+    const bodyEl = root.querySelector('[data-dc-note-body]');
+    if (!headingEl || !bodyEl) return;
+    const heading = headingEl.value ?? '';
+    const items = this.bodyToItems(bodyEl.value ?? '');
+    this._liveDraft[openId] = { heading, items };
   }
 
   scheduleNavEnd(fn, ms = 420) {
@@ -393,6 +431,16 @@ class Component extends DCLogic {
     const from = s.navPopFrom || s.screen;
     const to = s.navPopTo || 'list';
     return this.navPose(s.navSettled ? from : to, s.navParent);
+  }
+
+  itemsToBody(items) {
+    return (items || []).map((l) => String(l ?? '')).join('\n');
+  }
+
+  bodyToItems(body) {
+    const text = String(body ?? '');
+    if (!text) return [''];
+    return text.split('\n');
   }
 
   noteText(note) {
@@ -499,7 +547,7 @@ class Component extends DCLogic {
   onHeadingInput(e) {
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
-    const heading = e.currentTarget.textContent || '';
+    const heading = e.currentTarget.value || '';
     const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
     this._liveDraft[openId] = { heading, items };
     this.scheduleTag(openId, this.liveNoteText(heading, items));
@@ -507,7 +555,7 @@ class Component extends DCLogic {
 
   onHeadingBlur(e) {
     this._headingFocused = false;
-    const heading = (e.currentTarget.textContent || '').trim() || 'New Note';
+    const heading = (e.currentTarget.value || '').trim() || 'New Note';
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
     const items = this._liveDraft[openId]?.items || (note?.items || []).slice();
@@ -518,30 +566,27 @@ class Component extends DCLogic {
     this.commitPendingTags(openId);
   }
 
-  onItemFocus() {
+  onBodyFocus() {
     this._bodyFocused = true;
   }
 
-  onItemInput(index, e) {
+  onBodyInput(e) {
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
     const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
-    const items = (this._liveDraft[openId]?.items || (note?.items || []).slice());
-    while (items.length <= index) items.push('');
-    items[index] = e.currentTarget.textContent || '';
-    this._liveDraft[openId] = { heading, items: items.slice() };
+    const items = this.bodyToItems(e.currentTarget.value || '');
+    this._liveDraft[openId] = { heading, items };
+    this.autosizeNoteBody();
     this.scheduleTag(openId, this.liveNoteText(heading, items));
   }
 
-  onItemBlur(index, e) {
+  onBodyBlur(e) {
     this._bodyFocused = false;
     const openId = this.state.openId;
     const note = this.state.notes.find((n) => n.id === openId);
     const heading = this._liveDraft[openId]?.heading ?? note?.heading ?? '';
-    const items = (this._liveDraft[openId]?.items || (note?.items || []).slice());
-    while (items.length <= index) items.push('');
-    items[index] = e.currentTarget.textContent || '';
-    this._liveDraft[openId] = { heading, items: items.slice() };
+    const items = this.bodyToItems(e.currentTarget.value || '');
+    this._liveDraft[openId] = { heading, items };
     this.flushTagForOpenNote();
     this.applyNotePatch(openId, { heading, title: heading || 'New Note', items });
     delete this._liveDraft[openId];
@@ -606,16 +651,21 @@ class Component extends DCLogic {
     };
     const notes = [note, ...this.state.notes];
     const tags = { ...this.state.tags, [id]: [] };
-    this.startNavPush('detail', { notes, tags, openId: id });
+    const detailEditorKey = this.bumpDetailEditorKey(id);
+    this.startNavPush('detail', { notes, tags, openId: id, detailEditorKey });
   }
 
-  open(id) { this.startNavPush('detail', { openId: id }); }
+  open(id) {
+    const detailEditorKey = this.bumpDetailEditorKey(id);
+    this.startNavPush('detail', { openId: id, detailEditorKey });
+  }
   goList() {
     const openId = this.state.openId;
     const from = this.state.screen;
     this._headingFocused = false;
     this._bodyFocused = false;
     if (from === 'detail') {
+      this.captureDetailDraft();
       this.flushTagForOpenNote();
       this.syncDraftToState();
       setTimeout(() => this.commitPendingTags(openId), 2500);
@@ -799,6 +849,7 @@ class Component extends DCLogic {
     const showBanner = showList && s.filter === 'All' && activeCount > 0;
 
     const note = notes.find(n => n.id === s.openId) || notes[0];
+    const draft = this._liveDraft[s.openId];
     const detailTags = this.tagsFor(s.openId).map(t => ({ name: t }));
     const rem = s.reminders[s.openId];
     const hasReminder = !!rem;
@@ -842,16 +893,16 @@ class Component extends DCLogic {
       goList: () => this.goList(),
       composeNote: () => this.composeNote(),
       bellBtnStyle, hashBtnStyle, openReminderSheet: () => this.openSheet('reminder'), openTagSheet: () => this.openSheet('tag'),
-      detailHeading: note ? note.heading : '', detailDate: note ? note.date : '', detailTags,
-      bodyItems: (note ? note.items : []).map((text, index) => ({
-        text,
-        onFocus: () => this.onItemFocus(),
-        onInput: (e) => this.onItemInput(index, e),
-        onBlur: (e) => this.onItemBlur(index, e),
-      })),
+      detailEditorKey: s.detailEditorKey || s.openId,
+      detailHeading: draft?.heading ?? (note ? note.heading : ''),
+      detailBody: this.itemsToBody(draft?.items ?? (note ? note.items : [])),
+      detailDate: note ? note.date : '', detailTags,
       onHeadingFocus: () => this.onHeadingFocus(),
       onHeadingInput: (e) => this.onHeadingInput(e),
       onHeadingBlur: (e) => this.onHeadingBlur(e),
+      onBodyFocus: () => this.onBodyFocus(),
+      onBodyInput: (e) => this.onBodyInput(e),
+      onBodyBlur: (e) => this.onBodyBlur(e),
       hasReminder, reminderText, hasRepeat, reminderRepeat,
       backdropStyle, closeSheet: () => this.closeSheet(),
       reminderSlideStyle, tagSlideStyle, remOpts, removeReminder: () => this.removeReminder(),
