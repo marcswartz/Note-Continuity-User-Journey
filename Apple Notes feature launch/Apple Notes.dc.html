@@ -438,6 +438,14 @@ class Component extends DCLogic {
     return this._pendingTags[noteId] || this.state.tags[noteId] || [];
   }
 
+  usedTags() {
+    const tags = new Set();
+    for (const note of this.state.notes || []) {
+      for (const tag of this.tagsFor(note.id)) tags.add(tag);
+    }
+    return [...tags].sort((a, b) => a.localeCompare(b));
+  }
+
   commitPendingTags(noteId) {
     if (!this._pendingTags[noteId]) return;
     const tg = { ...this.state.tags };
@@ -765,10 +773,12 @@ class Component extends DCLogic {
       pointerEvents: s.filterAnim === 'out' ? 'none' : 'auto',
     };
 
-    const chipNames = ['All', 'grocery', 'work', 'ideas', 'personal', 'school', 'recipes'];
-    const chips = chipNames.map(n => ({ name: n, sel: n === s.filter, unsel: n !== s.filter, onClick: () => this.setFilter(n) }));
+    const usedTagList = this.usedTags();
+    const activeFilter = s.filter === 'All' || usedTagList.includes(s.filter) ? s.filter : 'All';
+    const chipNames = ['All', ...usedTagList];
+    const chips = chipNames.map(n => ({ name: n, sel: n === activeFilter, unsel: n !== activeFilter, onClick: () => this.setFilter(n) }));
 
-    const visible = notes.filter(n => s.filter === 'All' ? true : (this.tagsFor(n.id)).includes(s.filter));
+    const visible = notes.filter(n => activeFilter === 'All' ? true : this.tagsFor(n.id).includes(activeFilter));
     const order = ['Today', 'Yesterday'];
     const groups = order.map(name => {
       const items = visible.filter(n => n.section === name).map((n, i) => {
@@ -814,7 +824,7 @@ class Component extends DCLogic {
     const showReminderPresets = s.sheet === 'reminder' && !s.reminderPickerOpen;
     const showReminderPicker = s.sheet === 'reminder' && s.reminderPickerOpen;
 
-    const allSugg = ['work', 'ideas', 'personal', 'school', 'recipes', 'health'];
+    const allSugg = usedTagList;
     const openTags = this.tagsFor(s.openId);
     const suggestions = allSugg.filter(t => !openTags.includes(t)).map(t => ({ name: t, onClick: () => this.addTag(t) }));
     const curTags = openTags.map(t => ({ name: t, onRemove: () => this.removeTag(t) }));
@@ -827,7 +837,7 @@ class Component extends DCLogic {
 
     return {
       showList, showActive, showDetail, listNavStyle, activeNavStyle, detailNavStyle, filterContentStyle,
-      chips, groups, isEmpty, noteCount: visible.length, filterName: s.filter, filterHash: '#' + s.filter,
+      chips, groups, isEmpty, noteCount: visible.length, filterName: activeFilter, filterHash: '#' + activeFilter,
       showBanner, activeCount, goActive: () => this.goActive(), activeList,
       goList: () => this.goList(),
       composeNote: () => this.composeNote(),
