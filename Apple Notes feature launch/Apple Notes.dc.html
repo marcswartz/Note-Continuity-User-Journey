@@ -247,8 +247,8 @@
           </sc-for>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;">
-          <div style="flex:1;background:#F0F0F3;border-radius:12px;padding:13px 14px;color:#A2A2A7;font-size:16px;">Add tag…</div>
-          <div style="background:#E0A21C;color:#fff;font-weight:600;font-size:16px;padding:13px 22px;border-radius:12px;cursor:pointer;">Add</div>
+          <input type="text" value="{{ tagInput }}" placeholder="Add tag…" onChange="{{ onTagInputChange }}" onKeyDown="{{ onTagKeyDown }}" style="flex:1;box-sizing:border-box;border:none;border-radius:12px;background:#F0F0F3;padding:13px 14px;color:#1c1c1e;font-size:16px;font-family:inherit;outline:none;" />
+          <div onClick="{{ confirmAddTag }}" style="background:#E0A21C;color:#fff;font-weight:600;font-size:16px;padding:13px 22px;border-radius:12px;cursor:pointer;flex:none;">Add</div>
         </div>
         <div style="font-size:14px;color:#8A8A8E;margin-bottom:11px;font-weight:500;">Suggestions</div>
         <div style="display:flex;flex-wrap:wrap;gap:9px;">
@@ -284,7 +284,7 @@ class Component extends DCLogic {
   _bodyFocused = false;
 
   state = {
-    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '',
+    screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
     tags: { grocery: ['grocery'], design: ['work'], workout: ['health'], costco: ['grocery'] },
     notes: [
@@ -526,8 +526,27 @@ class Component extends DCLogic {
     setTimeout(() => this.commitPendingTags(openId), 2500);
   }
   setFilter(n) { this.setState({ filter: n }); }
-  openSheet(n) { this.setState({ sheet: n, reminderPickerOpen: false }); }
-  closeSheet() { this.setState({ sheet: null, reminderPickerOpen: false }); }
+  openSheet(n) { this.setState({ sheet: n, reminderPickerOpen: false, tagInput: n === 'tag' ? '' : this.state.tagInput }); }
+  closeSheet() { this.setState({ sheet: null, reminderPickerOpen: false, tagInput: '' }); }
+
+  normalizeTag(raw) {
+    return String(raw || '').toLowerCase().trim().replace(/^#+/, '').replace(/\s+/g, ' ');
+  }
+
+  onTagInputChange(e) {
+    this.setState({ tagInput: e.target.value || '' });
+  }
+
+  onTagKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      this.confirmAddTag();
+    }
+  }
+
+  confirmAddTag() {
+    this.addTag(this.state.tagInput);
+  }
 
   toPickerValue(date) {
     const d = date instanceof Date ? date : new Date(date);
@@ -587,8 +606,30 @@ class Component extends DCLogic {
     delete r[this.state.openId];
     this.setState({ reminders: r, pickedReminder: '', sheet: null, reminderPickerOpen: false });
   }
-  addTag(t) { const tg = { ...this.state.tags }; const a = (tg[this.state.openId] || []).slice(); if (!a.includes(t)) a.push(t); tg[this.state.openId] = a; this.setState({ tags: tg }); }
-  removeTag(t) { const tg = { ...this.state.tags }; tg[this.state.openId] = (tg[this.state.openId] || []).filter(x => x !== t); this.setState({ tags: tg }); }
+  addTag(t) {
+    const tag = this.normalizeTag(t);
+    if (!tag) return;
+    const openId = this.state.openId;
+    const current = this.tagsFor(openId).slice();
+    if (current.includes(tag)) {
+      this.setState({ tagInput: '' });
+      return;
+    }
+    const next = [...current, tag].slice(0, 2);
+    delete this._pendingTags[openId];
+    const tg = { ...this.state.tags };
+    tg[openId] = next;
+    this.setState({ tags: tg, tagInput: '' });
+  }
+
+  removeTag(t) {
+    const openId = this.state.openId;
+    const next = this.tagsFor(openId).filter((x) => x !== t);
+    delete this._pendingTags[openId];
+    const tg = { ...this.state.tags };
+    tg[openId] = next;
+    this.setState({ tags: tg });
+  }
 
   renderVals() {
     const G = '#E0A21C', B = '#0A84FF';
@@ -646,8 +687,9 @@ class Component extends DCLogic {
     const showReminderPicker = s.sheet === 'reminder' && s.reminderPickerOpen;
 
     const allSugg = ['work', 'ideas', 'personal', 'school', 'recipes', 'health'];
-    const suggestions = allSugg.filter(t => !(s.tags[s.openId] || []).includes(t)).map(t => ({ name: t, onClick: () => this.addTag(t) }));
-    const curTags = (s.tags[s.openId] || []).map(t => ({ name: t, onRemove: () => this.removeTag(t) }));
+    const openTags = this.tagsFor(s.openId);
+    const suggestions = allSugg.filter(t => !openTags.includes(t)).map(t => ({ name: t, onClick: () => this.addTag(t) }));
+    const curTags = openTags.map(t => ({ name: t, onRemove: () => this.removeTag(t) }));
 
     const anySheet = !!s.sheet;
     const backdropStyle = { position: 'absolute', inset: 0, background: 'rgba(0,0,0,.34)', zIndex: 80, transition: 'opacity .3s ease', opacity: anySheet ? 1 : 0, pointerEvents: anySheet ? 'auto' : 'none' };
@@ -679,6 +721,10 @@ class Component extends DCLogic {
       backToReminderPresets: () => this.backToReminderPresets(),
       onPickerDateTimeChange: (e) => this.onPickerDateTimeChange(e),
       confirmCustomReminder: () => this.confirmCustomReminder(),
+      tagInput: s.tagInput,
+      onTagInputChange: (e) => this.onTagInputChange(e),
+      onTagKeyDown: (e) => this.onTagKeyDown(e),
+      confirmAddTag: () => this.confirmAddTag(),
       curTags, suggestions,
     };
   }
