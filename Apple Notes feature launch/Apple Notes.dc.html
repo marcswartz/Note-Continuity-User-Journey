@@ -40,9 +40,7 @@
     background:transparent;color:transparent;caret-color:#2a2a2c;
     -webkit-appearance:none;appearance:none;
   }
-  .note-list-line{display:flex;align-items:flex-start;gap:10px;}
-  .note-list-marker{flex:none;width:10px;color:#9a9a9e;}
-  .note-list-text{flex:1;min-width:0;}
+  .note-dash{color:#9a9a9e;}
   .note-plain-line{min-height:1.34em;}
   @keyframes tag-pill-in{
     from{opacity:0;transform:scale(.86) translateY(8px);}
@@ -422,8 +420,8 @@ class Component extends DCLogic {
     const lines = ta.value.split('\n');
     mirror.innerHTML = lines.map((line) => {
       if (this.isListLine(line)) {
-        const text = line.slice(2);
-        return `<div class="note-list-line"><span class="note-list-marker">-</span><span class="note-list-text">${this.escapeHtml(text) || '\u00a0'}</span></div>`;
+        const rest = line.slice(2);
+        return `<div class="note-plain-line"><span class="note-dash">- </span>${this.escapeHtml(rest) || '\u00a0'}</div>`;
       }
       return `<div class="note-plain-line">${line ? this.escapeHtml(line) : '\u00a0'}</div>`;
     }).join('');
