@@ -44,6 +44,13 @@
   .nav-layer-list{z-index:1;}
   .nav-layer-active{z-index:2;box-shadow:-10px 0 28px rgba(0,0,0,.06);}
   .nav-layer-detail{z-index:3;box-shadow:-10px 0 28px rgba(0,0,0,.07);}
+  .filter-content{
+    transition:opacity .24s cubic-bezier(.32,.72,0,1),transform .24s cubic-bezier(.32,.72,0,1);
+  }
+  .filter-chip{
+    flex:none;padding:7px 17px;border-radius:18px;font-size:15px;cursor:pointer;
+    transition:background .24s cubic-bezier(.32,.72,0,1),color .24s cubic-bezier(.32,.72,0,1);
+  }
 </style>
 </helmet>
 
@@ -59,18 +66,20 @@
           <div style="width:34px;height:34px;border-radius:50%;background:#E7E7EC;color:#8A8A8E;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="18" cy="12" r="1.7"/></svg></div>
         </div>
         <div style="padding:2px 20px 0;font-size:34px;font-weight:800;letter-spacing:-.6px;color:#1c1c1e;">Notes</div>
-        <div style="padding:3px 20px 0;font-size:15px;color:#8A8A8E;">{{ noteCount }} Notes</div>
 
         <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 20px 4px;">
           <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="6">
             <sc-if value="{{ chip.sel }}" hint-placeholder-val="{{ true }}">
-              <div onClick="{{ chip.onClick }}" style="flex:none;padding:7px 17px;border-radius:18px;background:#E0A21C;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">{{ chip.name }}</div>
+              <div onClick="{{ chip.onClick }}" class="filter-chip" style="background:#E0A21C;color:#fff;font-weight:600;">{{ chip.name }}</div>
             </sc-if>
             <sc-if value="{{ chip.unsel }}" hint-placeholder-val="{{ true }}">
-              <div onClick="{{ chip.onClick }}" style="flex:none;padding:7px 17px;border-radius:18px;background:#E7E7EC;color:#3a3a3c;font-size:15px;font-weight:500;cursor:pointer;">{{ chip.name }}</div>
+              <div onClick="{{ chip.onClick }}" class="filter-chip" style="background:#E7E7EC;color:#3a3a3c;font-weight:500;">{{ chip.name }}</div>
             </sc-if>
           </sc-for>
         </div>
+
+        <div class="filter-content" style="{{ filterContentStyle }}">
+        <div style="padding:3px 20px 0;font-size:15px;color:#8A8A8E;">{{ noteCount }} Notes</div>
 
         <sc-if value="{{ showBanner }}" hint-placeholder-val="{{ true }}">
           <div onClick="{{ goActive }}" style="margin:14px 20px 8px;background:#fff;border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer;">
@@ -114,6 +123,7 @@
             <div style="font-size:15px;margin-top:6px;color:#A2A2A7;">Notes you tag {{ filterHash }} will show up here.</div>
           </div>
         </sc-if>
+        </div>
       </div>
 
       <div style="position:absolute;top:0;left:0;right:0;height:96px;z-index:30;pointer-events:none;background:linear-gradient(to bottom,#F2F2F7 0%,rgba(242,242,247,.88) 38%,rgba(242,242,247,0) 100%);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);-webkit-mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.75) 42%,rgba(0,0,0,.25) 72%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0%,rgba(0,0,0,.75) 42%,rgba(0,0,0,.25) 72%,transparent 100%);"></div>
@@ -291,12 +301,14 @@ class Component extends DCLogic {
   _liveDraft = {};
   _pendingTags = {};
   _navTimer = null;
+  _filterTimer = null;
   _headingFocused = false;
   _bodyFocused = false;
 
   state = {
     screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
     navAnim: '', navSettled: false, navTarget: '', navPopFrom: '', navPopTo: '', navParent: 'list',
+    filterAnim: '',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
     tags: { grocery: ['grocery'], design: ['work'], workout: ['health'], costco: ['grocery'] },
     notes: [
@@ -310,6 +322,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     Object.values(this._tagTimers).forEach((t) => clearTimeout(t));
     clearTimeout(this._navTimer);
+    clearTimeout(this._filterTimer);
   }
 
   scheduleNavEnd(fn, ms = 420) {
@@ -611,7 +624,15 @@ class Component extends DCLogic {
     this._bodyFocused = false;
     this.startNavPush('active');
   }
-  setFilter(n) { this.setState({ filter: n }); }
+  setFilter(n) {
+    if (n === this.state.filter || this.state.filterAnim === 'out') return;
+    this.setState({ filterAnim: 'out' });
+    clearTimeout(this._filterTimer);
+    this._filterTimer = setTimeout(() => {
+      this.setState({ filter: n });
+      this.afterNavPaint(() => this.setState({ filterAnim: '' }));
+    }, 200);
+  }
   openSheet(n) { this.setState({ sheet: n, reminderPickerOpen: false, tagInput: n === 'tag' ? '' : this.state.tagInput }); }
   closeSheet() { this.setState({ sheet: null, reminderPickerOpen: false, tagInput: '' }); }
 
@@ -738,6 +759,12 @@ class Component extends DCLogic {
       pointerEvents: pose.detailPe,
     };
 
+    const filterContentStyle = {
+      opacity: s.filterAnim === 'out' ? 0 : 1,
+      transform: s.filterAnim === 'out' ? 'translateY(8px)' : 'translateY(0)',
+      pointerEvents: s.filterAnim === 'out' ? 'none' : 'auto',
+    };
+
     const chipNames = ['All', 'grocery', 'work', 'ideas', 'personal', 'school', 'recipes'];
     const chips = chipNames.map(n => ({ name: n, sel: n === s.filter, unsel: n !== s.filter, onClick: () => this.setFilter(n) }));
 
@@ -799,7 +826,7 @@ class Component extends DCLogic {
     const tagSlideStyle = { ...slideBase, transform: s.sheet === 'tag' ? 'translateY(0)' : 'translateY(110%)' };
 
     return {
-      showList, showActive, showDetail, listNavStyle, activeNavStyle, detailNavStyle,
+      showList, showActive, showDetail, listNavStyle, activeNavStyle, detailNavStyle, filterContentStyle,
       chips, groups, isEmpty, noteCount: visible.length, filterName: s.filter, filterHash: '#' + s.filter,
       showBanner, activeCount, goActive: () => this.goActive(), activeList,
       goList: () => this.goList(),
