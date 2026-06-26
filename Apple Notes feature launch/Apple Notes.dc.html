@@ -42,15 +42,15 @@
     backface-visibility:hidden;
   }
   .nav-layer-list{z-index:1;}
-  .nav-layer-detail{z-index:2;box-shadow:-10px 0 28px rgba(0,0,0,.07);}
+  .nav-layer-active{z-index:2;box-shadow:-10px 0 28px rgba(0,0,0,.06);}
+  .nav-layer-detail{z-index:3;box-shadow:-10px 0 28px rgba(0,0,0,.07);}
 </style>
 </helmet>
 
 <div class="phone-stage">
   <div class="phone-frame">
 
-    <!-- ===== LIST + DETAIL NAV STACK ===== -->
-    <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+    <!-- ===== NAV STACK ===== -->
     <div class="nav-stack">
     <div class="nav-layer nav-layer-list" style="{{ listNavStyle }}">
     <div style="position:absolute;inset:0;background:#F2F2F7;">
@@ -130,6 +130,35 @@
     </div>
     </div>
 
+    <div class="nav-layer nav-layer-active" style="{{ activeNavStyle }}">
+    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:52px;padding-bottom:40px;">
+      <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;padding:8px 16px 0;font-size:17px;font-weight:500;cursor:pointer;width:fit-content;">
+        <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
+      </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:16px 20px 0;">
+        <span style="color:#E0A21C;display:flex;"><svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <span style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:#1c1c1e;">Active Notes</span>
+      </div>
+      <div style="font-size:16px;color:#8A8A8E;padding:7px 20px 0;">Notes with upcoming reminders</div>
+      <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:14px;">
+        <sc-for list="{{ activeList }}" as="n" hint-placeholder-count="1">
+          <div onClick="{{ n.onOpen }}" style="border:1px solid #E8E8EC;border-radius:16px;padding:17px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);">
+            <div style="font-size:18px;font-weight:700;color:#1c1c1e;letter-spacing:-.2px;">{{ n.title }}</div>
+            <div style="font-size:15px;color:#8A8A8E;margin-top:6px;">{{ n.preview }}</div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:11px;color:#E0A21C;font-size:15px;font-weight:600;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ n.remText }}
+            </div>
+            <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;">
+              <sc-for list="{{ n.tagList }}" as="t" hint-placeholder-count="1">
+                <span style="padding:3px 11px;border-radius:11px;background:#EFEFF2;color:#7C7C82;font-size:13px;font-weight:500;">{{ t.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </div>
+
     <div class="nav-layer nav-layer-detail" style="{{ detailNavStyle }}">
     <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:50px;padding-bottom:48px;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 2px;">
@@ -169,37 +198,6 @@
     </div>
     </div>
     </div>
-    </sc-if>
-
-    <!-- ===== ACTIVE NOTES SCREEN ===== -->
-    <sc-if value="{{ showActive }}" hint-placeholder-val="{{ false }}">
-    <div style="position:absolute;inset:0;background:#fff;overflow-y:auto;padding-top:52px;padding-bottom:40px;">
-      <div onClick="{{ goList }}" style="display:flex;align-items:center;gap:5px;color:#E0A21C;padding:8px 16px 0;font-size:17px;font-weight:500;cursor:pointer;width:fit-content;">
-        <svg width="11" height="19" viewBox="0 0 11 19" fill="none"><path d="M9.5 1.5 1.5 9.5l8 8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Notes
-      </div>
-      <div style="display:flex;align-items:center;gap:11px;padding:16px 20px 0;">
-        <span style="color:#E0A21C;display:flex;"><svg width="27" height="27" viewBox="0 0 24 24" fill="none"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-        <span style="font-size:30px;font-weight:800;letter-spacing:-.5px;color:#1c1c1e;">Active Notes</span>
-      </div>
-      <div style="font-size:16px;color:#8A8A8E;padding:7px 20px 0;">Notes with upcoming reminders</div>
-      <div style="padding:20px 20px 0;display:flex;flex-direction:column;gap:14px;">
-        <sc-for list="{{ activeList }}" as="n" hint-placeholder-count="1">
-          <div onClick="{{ n.onOpen }}" style="border:1px solid #E8E8EC;border-radius:16px;padding:17px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.03);">
-            <div style="font-size:18px;font-weight:700;color:#1c1c1e;letter-spacing:-.2px;">{{ n.title }}</div>
-            <div style="font-size:15px;color:#8A8A8E;margin-top:6px;">{{ n.preview }}</div>
-            <div style="display:flex;align-items:center;gap:6px;margin-top:11px;color:#E0A21C;font-size:15px;font-weight:600;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ n.remText }}
-            </div>
-            <div style="display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;">
-              <sc-for list="{{ n.tagList }}" as="t" hint-placeholder-count="1">
-                <span style="padding:3px 11px;border-radius:11px;background:#EFEFF2;color:#7C7C82;font-size:13px;font-weight:500;">{{ t.name }}</span>
-              </sc-for>
-            </div>
-          </div>
-        </sc-for>
-      </div>
-    </div>
-    </sc-if>
 
     <!-- ===== BACKDROP + SHEETS ===== -->
     <div onClick="{{ closeSheet }}" style="{{ backdropStyle }}"></div>
@@ -298,7 +296,7 @@ class Component extends DCLogic {
 
   state = {
     screen: 'list', filter: 'All', sheet: null, openId: 'grocery', pickedReminder: '', reminderPickerOpen: false, pickerDateTime: '', tagInput: '',
-    navAnim: '', navSettled: false,
+    navAnim: '', navSettled: false, navTarget: '', navPopFrom: '', navPopTo: '', navParent: 'list',
     reminders: { grocery: { text: 'Jun 17 at 6:00 PM', repeat: 'weekly' }, design: { text: 'Thu, Jun 18 at 10:00 AM', repeat: '' } },
     tags: { grocery: ['grocery'], design: ['work'], workout: ['health'], costco: ['grocery'] },
     notes: [
@@ -323,13 +321,65 @@ class Component extends DCLogic {
     requestAnimationFrame(() => requestAnimationFrame(fn));
   }
 
-  startPushDetail(patch = {}) {
-    this.setState({ ...patch, screen: 'detail', sheet: null, navAnim: 'push', navSettled: false });
+  startNavPush(target, patch = {}) {
+    const navParent = target === 'detail' ? (this.state.screen === 'active' ? 'active' : 'list') : 'list';
+    this.setState({
+      ...patch,
+      screen: target,
+      sheet: null,
+      navAnim: 'push',
+      navSettled: false,
+      navTarget: target,
+      navParent,
+    });
     this.afterNavPaint(() => {
       if (this.state.navAnim !== 'push') return;
       this.setState({ navSettled: true });
-      this.scheduleNavEnd(() => this.setState({ navAnim: '' }));
+      this.scheduleNavEnd(() => this.setState({ navAnim: '', navTarget: '' }));
     });
+  }
+
+  startNavPop(to, from) {
+    this.setState({ navAnim: 'pop', navSettled: true, navPopFrom: from, navPopTo: to, sheet: null });
+    this.afterNavPaint(() => {
+      if (this.state.navAnim !== 'pop') return;
+      this.setState({ navSettled: false, screen: to });
+      this.scheduleNavEnd(() => this.setState({ navAnim: '', navPopFrom: '', navPopTo: '' }));
+    });
+  }
+
+  navPose(screen, parent = 'list') {
+    const R = '100%';
+    const P = '-26%';
+    if (screen === 'list') {
+      return { list: '0%', active: R, detail: R, listFilter: 'brightness(1)', listPe: 'auto', activePe: 'none', detailPe: 'none' };
+    }
+    if (screen === 'active') {
+      return { list: P, active: '0%', detail: R, listFilter: 'brightness(0.96)', listPe: 'none', activePe: 'auto', detailPe: 'none' };
+    }
+    return {
+      list: P,
+      active: parent === 'active' ? P : R,
+      detail: '0%',
+      listFilter: 'brightness(0.96)',
+      activeFilter: parent === 'active' ? 'brightness(0.96)' : 'brightness(1)',
+      listPe: 'none',
+      activePe: 'none',
+      detailPe: 'auto',
+    };
+  }
+
+  currentNavPose() {
+    const s = this.state;
+    if (!s.navAnim) return this.navPose(s.screen, s.navParent);
+    if (s.navAnim === 'push') {
+      const to = s.navTarget || s.screen;
+      const from = to === 'active' ? 'list' : s.navParent === 'active' ? 'active' : 'list';
+      return this.navPose(s.navSettled ? to : from, s.navParent);
+    }
+    const from = s.navPopFrom || s.screen;
+    const to = s.navPopTo || 'list';
+    return this.navPose(s.navSettled ? from : to, s.navParent);
   }
 
   noteText(note) {
@@ -535,38 +585,31 @@ class Component extends DCLogic {
     };
     const notes = [note, ...this.state.notes];
     const tags = { ...this.state.tags, [id]: [] };
-    this.startPushDetail({ notes, tags, openId: id });
+    this.startNavPush('detail', { notes, tags, openId: id });
   }
 
-  open(id) { this.startPushDetail({ openId: id }); }
+  open(id) { this.startNavPush('detail', { openId: id }); }
   goList() {
     const openId = this.state.openId;
+    const from = this.state.screen;
     this._headingFocused = false;
     this._bodyFocused = false;
-    this.flushTagForOpenNote();
-    this.syncDraftToState();
-    if (this.state.screen !== 'detail') {
-      this.setState({ screen: 'list', sheet: null });
+    if (from === 'detail') {
+      this.flushTagForOpenNote();
+      this.syncDraftToState();
       setTimeout(() => this.commitPendingTags(openId), 2500);
+    }
+    if (from === 'list') {
+      this.setState({ sheet: null });
       return;
     }
-    this.setState({ navAnim: 'pop', navSettled: true, sheet: null });
-    this.afterNavPaint(() => {
-      if (this.state.navAnim !== 'pop') return;
-      this.setState({ navSettled: false, screen: 'list' });
-      this.scheduleNavEnd(() => this.setState({ navAnim: '' }));
-    });
-    setTimeout(() => this.commitPendingTags(openId), 2500);
+    this.startNavPop('list', from);
   }
   goActive() {
-    const openId = this.state.openId;
+    if (this.state.screen === 'active') return;
     this._headingFocused = false;
     this._bodyFocused = false;
-    this.flushTagForOpenNote();
-    this.syncDraftToState();
-    this.commitPendingTags(openId);
-    this.setState({ screen: 'active', sheet: null });
-    setTimeout(() => this.commitPendingTags(openId), 2500);
+    this.startNavPush('active');
   }
   setFilter(n) { this.setState({ filter: n }); }
   openSheet(n) { this.setState({ sheet: n, reminderPickerOpen: false, tagInput: n === 'tag' ? '' : this.state.tagInput }); }
@@ -679,38 +722,21 @@ class Component extends DCLogic {
     const s = this.state;
     const notes = s.notes || [];
     const showList = s.screen === 'list', showActive = s.screen === 'active', showDetail = s.screen === 'detail';
-    const showNav = showList || showDetail;
-    const onDetail = showDetail;
-    const settled = !!s.navSettled;
-    const anim = s.navAnim || '';
-    let listX = '0%';
-    let detailX = '100%';
-    let listFilter = 'brightness(1)';
-    let listPe = 'auto';
-    let detailPe = 'none';
-
-    if (anim === 'push') {
-      listX = settled ? '-26%' : '0%';
-      detailX = settled ? '0%' : '100%';
-      listFilter = settled ? 'brightness(0.96)' : 'brightness(1)';
-      listPe = 'none';
-      detailPe = 'auto';
-    } else if (anim === 'pop') {
-      listX = settled ? '-26%' : '0%';
-      detailX = settled ? '0%' : '100%';
-      listFilter = settled ? 'brightness(0.96)' : 'brightness(1)';
-      listPe = settled ? 'none' : 'auto';
-      detailPe = settled ? 'auto' : 'none';
-    } else if (onDetail) {
-      listX = '-26%';
-      detailX = '0%';
-      listFilter = 'brightness(0.96)';
-      listPe = 'none';
-      detailPe = 'auto';
-    }
-
-    const listNavStyle = { transform: `translate3d(${listX},0,0)`, filter: listFilter, pointerEvents: listPe };
-    const detailNavStyle = { transform: `translate3d(${detailX},0,0)`, pointerEvents: detailPe };
+    const pose = this.currentNavPose();
+    const listNavStyle = {
+      transform: `translate3d(${pose.list},0,0)`,
+      filter: pose.listFilter,
+      pointerEvents: pose.listPe,
+    };
+    const activeNavStyle = {
+      transform: `translate3d(${pose.active},0,0)`,
+      filter: pose.activeFilter || 'brightness(1)',
+      pointerEvents: pose.activePe,
+    };
+    const detailNavStyle = {
+      transform: `translate3d(${pose.detail},0,0)`,
+      pointerEvents: pose.detailPe,
+    };
 
     const chipNames = ['All', 'grocery', 'work', 'ideas', 'personal', 'school', 'recipes'];
     const chips = chipNames.map(n => ({ name: n, sel: n === s.filter, unsel: n !== s.filter, onClick: () => this.setFilter(n) }));
@@ -773,7 +799,7 @@ class Component extends DCLogic {
     const tagSlideStyle = { ...slideBase, transform: s.sheet === 'tag' ? 'translateY(0)' : 'translateY(110%)' };
 
     return {
-      showList, showActive, showDetail, showNav, listNavStyle, detailNavStyle,
+      showList, showActive, showDetail, listNavStyle, activeNavStyle, detailNavStyle,
       chips, groups, isEmpty, noteCount: visible.length, filterName: s.filter, filterHash: '#' + s.filter,
       showBanner, activeCount, goActive: () => this.goActive(), activeList,
       goList: () => this.goList(),
