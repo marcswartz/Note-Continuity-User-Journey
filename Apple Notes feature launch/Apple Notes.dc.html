@@ -677,11 +677,16 @@ class Component extends DCLogic {
   }
 
   usedTags() {
-    const tags = new Set();
+    const counts = {};
     for (const note of this.state.notes || []) {
-      for (const tag of this.tagsFor(note.id)) tags.add(tag);
+      for (const tag of this.tagsFor(note.id)) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
     }
-    return [...tags].sort((a, b) => a.localeCompare(b));
+    return Object.keys(counts).sort((a, b) => {
+      const diff = counts[b] - counts[a];
+      return diff !== 0 ? diff : a.localeCompare(b);
+    });
   }
 
   commitPendingTags(noteId, { animate = false } = {}) {
