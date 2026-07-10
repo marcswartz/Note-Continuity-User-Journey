@@ -590,12 +590,31 @@ class Component extends DCLogic {
     return lines.join('\n');
   }
 
+  stripListMarker(line) {
+    return String(line || '').trim().replace(/^-\s*/, '').trim();
+  }
+
+  hasTaggableContent(heading, items) {
+    const title = String(heading || '').trim();
+    const meaningfulTitle = title && title.toLowerCase() !== 'new note';
+    const meaningfulBody = (items || []).some((l) => this.stripListMarker(l));
+    return !!(meaningfulTitle || meaningfulBody);
+  }
+
   openNoteText(openId = this.state.openId) {
     const draft = this.getEditorDraft(openId);
     const note = this.state.notes.find((n) => n.id === openId);
     const heading = draft?.heading ?? note?.heading ?? '';
     const items = draft?.items ?? note?.items ?? [];
     return this.liveNoteText(heading, items);
+  }
+
+  openNoteHasTaggableContent(openId = this.state.openId) {
+    const draft = this.getEditorDraft(openId);
+    const note = this.state.notes.find((n) => n.id === openId);
+    const heading = draft?.heading ?? note?.heading ?? '';
+    const items = draft?.items ?? note?.items ?? [];
+    return this.hasTaggableContent(heading, items);
   }
 
   isTagAnimating(noteId, tag) {
@@ -737,6 +756,15 @@ class Component extends DCLogic {
   scheduleTag(noteId, text) {
     if (this._userLockedTags[noteId]) return;
     if (!text || !String(text).trim()) return;
+    const draft = this.state.editorDraft?.openId === noteId ? this.state.editorDraft : null;
+    const note = this.state.notes.find((n) => n.id === noteId);
+    const heading = draft?.heading ?? note?.heading ?? '';
+    const items = draft?.items ?? note?.items ?? [];
+    if (!this.hasTaggableContent(heading, items)) {
+      clearTimeout(this._tagTimers[noteId]);
+      delete this._pendingTags[noteId];
+      return;
+    }
     clearTimeout(this._tagTimers[noteId]);
     this._tagTimers[noteId] = setTimeout(() => this.fetchTagsForNote(noteId, text), this.TAG_IDLE_MS);
   }
@@ -748,6 +776,10 @@ class Component extends DCLogic {
       return;
     }
     clearTimeout(this._tagTimers[openId]);
+    if (!this.openNoteHasTaggableContent(openId)) {
+      delete this._pendingTags[openId];
+      return;
+    }
     const text = this.openNoteText(openId);
     if (text.trim()) this.fetchTagsForNote(openId, text);
   }
@@ -869,6 +901,8 @@ class Component extends DCLogic {
   }
 
   async fetchTagsForNote(noteId, text) {
+    if (this._userLockedTags[noteId]) return;
+    if (!this.openNoteHasTaggableContent(noteId)) return;
     const trimmed = String(text || '').trim();
     if (!trimmed) return;
     const seq = (this._tagSeq[noteId] || 0) + 1;
@@ -884,6 +918,8 @@ class Component extends DCLogic {
       }
       if (!tags.length) return;
       if (this._tagSeq[noteId] !== seq) return;
+      if (this._userLockedTags[noteId]) return;
+      if (!this.openNoteHasTaggableContent(noteId)) return;
       this.applyTags(noteId, tags);
     } catch (_) {
       /* silent */
