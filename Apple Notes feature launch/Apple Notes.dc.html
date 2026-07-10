@@ -334,7 +334,7 @@
           </sc-for>
         </div>
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;">
-          <input type="text" value="{{ tagInput }}" placeholder="Add tag…" onChange="{{ onTagInputChange }}" onKeyDown="{{ onTagKeyDown }}" style="flex:1;box-sizing:border-box;border:none;border-radius:12px;background:#F0F0F3;padding:13px 14px;color:#1c1c1e;font-size:16px;font-family:inherit;outline:none;" />
+          <input type="text" data-dc-tag-input="1" value="{{ tagInput }}" placeholder="Add tag…" onInput="{{ onTagInputChange }}" onKeyDown="{{ onTagKeyDown }}" style="flex:1;box-sizing:border-box;border:none;border-radius:12px;background:#F0F0F3;padding:13px 14px;color:#1c1c1e;font-size:16px;font-family:inherit;outline:none;" />
           <div onClick="{{ confirmAddTag }}" style="background:#E0A21C;color:#fff;font-weight:600;font-size:16px;padding:13px 22px;border-radius:12px;cursor:pointer;flex:none;">Add</div>
         </div>
         <div style="font-size:14px;color:#8A8A8E;margin-bottom:11px;font-weight:500;">Suggestions</div>
@@ -946,7 +946,7 @@ class Component extends DCLogic {
   }
 
   onTagInputChange(e) {
-    this.setState({ tagInput: e.target.value || '' });
+    this.setState({ tagInput: e.currentTarget.value || '' });
   }
 
   onTagKeyDown(e) {
@@ -956,8 +956,14 @@ class Component extends DCLogic {
     }
   }
 
+  readTagInputValue() {
+    const el = document.getElementById('dc-root')?.querySelector('[data-dc-tag-input]');
+    if (el && typeof el.value === 'string') return el.value;
+    return this.state.tagInput || '';
+  }
+
   confirmAddTag() {
-    this.addTag(this.state.tagInput);
+    this.addTag(this.readTagInputValue());
   }
 
   toPickerValue(date) {
@@ -1027,11 +1033,15 @@ class Component extends DCLogic {
       this.setState({ tagInput: '' });
       return;
     }
-    const next = [...current, tag].slice(0, 2);
+    // Keep newest tags when at the 2-tag limit so manual Add always lands.
+    const next = [...current.filter((x) => x !== tag), tag].slice(-2);
     delete this._pendingTags[openId];
     const tg = { ...this.state.tags };
     tg[openId] = next;
-    this.setState({ tags: tg, tagInput: '' });
+    const tagAnim = this.markTagsAnimated(openId, current, next);
+    const patch = { tags: tg, tagInput: '' };
+    if (tagAnim) patch.tagAnim = tagAnim;
+    this.setState(patch);
   }
 
   removeTag(t) {
