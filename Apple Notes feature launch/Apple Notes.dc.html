@@ -371,6 +371,7 @@ class Component extends DCLogic {
   _tagAnimTimer = null;
   _revealTagTimers = {};
   _pendingTags = {};
+  _userLockedTags = {};
   _navTimer = null;
   _filterTimer = null;
   _headingFocused = false;
@@ -655,6 +656,8 @@ class Component extends DCLogic {
   }
 
   applyTags(noteId, tags) {
+    // Don't let AI overwrite tags the user added or removed manually.
+    if (this._userLockedTags[noteId]) return;
     const cleaned = tags.filter((t) => typeof t === 'string' && t.trim()).slice(0, 2);
     if (!cleaned.length) return;
     this._pendingTags[noteId] = cleaned;
@@ -682,6 +685,10 @@ class Component extends DCLogic {
   }
 
   commitPendingTags(noteId, { animate = false } = {}) {
+    if (this._userLockedTags[noteId]) {
+      delete this._pendingTags[noteId];
+      return;
+    }
     if (!this._pendingTags[noteId]) return;
     const prev = this.state.tags[noteId] || [];
     const next = this._pendingTags[noteId];
@@ -723,6 +730,7 @@ class Component extends DCLogic {
   }
 
   scheduleTag(noteId, text) {
+    if (this._userLockedTags[noteId]) return;
     if (!text || !String(text).trim()) return;
     clearTimeout(this._tagTimers[noteId]);
     this._tagTimers[noteId] = setTimeout(() => this.fetchTagsForNote(noteId, text), this.TAG_IDLE_MS);
@@ -730,6 +738,10 @@ class Component extends DCLogic {
 
   flushTagForOpenNote() {
     const openId = this.state.openId;
+    if (this._userLockedTags[openId]) {
+      clearTimeout(this._tagTimers[openId]);
+      return;
+    }
     clearTimeout(this._tagTimers[openId]);
     const text = this.openNoteText(openId);
     if (text.trim()) this.fetchTagsForNote(openId, text);
@@ -1035,7 +1047,10 @@ class Component extends DCLogic {
     }
     // Keep newest tags when at the 2-tag limit so manual Add always lands.
     const next = [...current.filter((x) => x !== tag), tag].slice(-2);
+    this._userLockedTags[openId] = true;
     delete this._pendingTags[openId];
+    clearTimeout(this._tagTimers[openId]);
+    clearTimeout(this._revealTagTimers[openId]);
     const tg = { ...this.state.tags };
     tg[openId] = next;
     const tagAnim = this.markTagsAnimated(openId, current, next);
@@ -1047,7 +1062,10 @@ class Component extends DCLogic {
   removeTag(t) {
     const openId = this.state.openId;
     const next = this.tagsFor(openId).filter((x) => x !== t);
+    this._userLockedTags[openId] = true;
     delete this._pendingTags[openId];
+    clearTimeout(this._tagTimers[openId]);
+    clearTimeout(this._revealTagTimers[openId]);
     const tg = { ...this.state.tags };
     tg[openId] = next;
     this.setState({ tags: tg });
